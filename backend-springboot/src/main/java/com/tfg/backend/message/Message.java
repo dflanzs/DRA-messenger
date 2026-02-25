@@ -4,14 +4,15 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 
-import java.sql.Date;
+import java.time.LocalDateTime;
 
 import org.springframework.format.annotation.DateTimeFormat;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import com.tfg.backend.user.User;
 
 @Entity
 @Table(name = "messages")
@@ -20,17 +21,30 @@ public class Message {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank
-    private String encryptedContent;
+    @ManyToOne
+    private User sender;
+
+    @ManyToOne
+    private User receiver;
 
     @NotBlank
-    private String senderId;
+    private String content;
 
-    @NotBlank
-    private String chatId;
+    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime createdAt;
 
-    @DateTimeFormat(pattern = "yyyy-MM-dd")
-    private Date createdAt;
+    private boolean read;
+
+    public Message() {
+    }
+
+    public Message(User sender, User receiver, String content) {
+        this.sender = sender;
+        this.receiver = receiver;
+        this.content = content;
+        this.createdAt = LocalDateTime.now();
+        this.read = false;
+    }
 
     public Long getId() {
         return id;
@@ -40,35 +54,43 @@ public class Message {
         this.id = id;
     }
 
-    public String getEncryptedContent() {
-        return encryptedContent;
+    public User getSender() {
+        return sender;
     }
 
-    public void setEncryptedContent(String encryptedContent) {
-        this.encryptedContent = encryptedContent;
+    public void setSender(User sender) {
+        this.sender = sender;
     }
 
-    public String getSenderId() {
-        return senderId;
+    public User getReceiver() {
+        return receiver;
     }
 
-    public void setSenderId(String senderId) {
-        this.senderId = senderId;
+    public void setReceiver(User receiver) {
+        this.receiver = receiver;
     }
 
-    public String getChatId() {
-        return chatId;
+    public String getContent() {
+        return content;
     }
 
-    public void setChatId(String chatId) {
-        this.chatId = chatId;
+    public void setContent(String content) {
+        this.content = content;
     }
 
-    public Date getCreatedAt() {
+    public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(Date createdAt) {
+    public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public boolean isRead() {
+        return read;
+    }
+
+    public void setRead(boolean read) {
+        this.read = read;
     }
 }
