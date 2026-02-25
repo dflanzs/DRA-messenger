@@ -21,9 +21,6 @@ public class ChatGroup {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    private User sender;
-
     @ManyToMany
     private User[] users;
 
@@ -40,23 +37,11 @@ public class ChatGroup {
         return id;
     }
 
-    public Long getSenderId() {
-        return sender.getId();
-    }
-
     public Long[] getUserIds() {
         Long[] userIds = new Long[users.length];
         for (int i = 0; i < users.length; i++) {
             userIds[i] = users[i].getId();
         }
         return userIds;
-    }
-
-    public Long[] getReceiverId(int index) {
-        Long[] receiverIds = new Long[users.length - 1];
-        for (int i = 0; i < users.length - 1; i++) {
-            receiverIds[i] = users[i].getId() != sender.getId() ? users[i].getId() : users[i + 1].getId();
-        }
-        return receiverIds;
     }
 }

@@ -120,4 +120,23 @@ public class Message {
     public void setRead(boolean read) {
         this.read = read;
     }
+
+    public Long getReceiverId() {
+        if (oneToOneChat == null) return null;
+
+        Long[] userIds = oneToOneChat.getUserIds();
+        return userIds[0] != sender.getId() ? userIds[0] : userIds[1];
+    }
+
+    public Long[] getGroupReceiverIds() {
+        if (chatGroup == null) return null;
+
+        Long[] usersIds = chatGroup.getUserIds();
+
+        Long[] receiverIds = new Long[usersIds.length - 1];
+        for (int i = 0; i < usersIds.length - 1; i++) {
+            receiverIds[i] = usersIds[i] != sender.getId() ? usersIds[i] : usersIds[i + 1];
+        }
+        return receiverIds;
+    }
 }

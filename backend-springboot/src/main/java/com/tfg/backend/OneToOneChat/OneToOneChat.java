@@ -52,4 +52,8 @@ public class OneToOneChat {
     public Long getReceiverId() {
         return user2.getId();
     }
+
+    public Long[] getUserIds() {
+        return new Long[]{user1.getId(), user2.getId()};
+    }
 }
