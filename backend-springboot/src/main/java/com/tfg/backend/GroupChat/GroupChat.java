@@ -1,4 +1,4 @@
-package com.tfg.backend.ChatGroup;
+package com.tfg.backend.GroupChat;
 
 import java.time.LocalDateTime;
 
@@ -16,7 +16,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "one_to_one_chats")
-public class ChatGroup {
+public class GroupChat {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

@@ -1,4 +1,4 @@
-package com.tfg.backend.OneToOneChat;
+package com.tfg.backend.GroupChat;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -14,10 +14,13 @@ import java.util.Optional;
 import com.tfg.backend.message.*;
 
 @Controller
-public class OneToOneChatController {
+public class GroupChatController {
 
     @Autowired
     private MessageRepository messageRepository;
+
+    @Autowired
+    private GroupChatRepository groupChatRepository;
 
     @Autowired
     private UserRepository userRepository;
@@ -34,14 +37,14 @@ public class OneToOneChatController {
     @MessageMapping("/private-message")
     public void sendPrivateMessage(@Payload MessageDTO messageDTO) {
         Optional<User> senderOpt = userRepository.findById(messageDTO.getSenderId());
-        Optional<User> receiverOpt = userRepository.findById(messageDTO.getReceiverId());
+        Optional<GroupChat> chatOpt = groupChatRepository.findById(messageDTO.getGroupChatId());
 
-        if (senderOpt.isPresent() && receiverOpt.isPresent()) {
+        if (senderOpt.isPresent() && chatOpt.isPresent()) {
             User sender = senderOpt.get();
-            User receiver = receiverOpt.get();
+            GroupChat chat = chatOpt.get();
 
             // Guardar el mensaje en la BD
-            Message message = new Message(sender, receiver, messageDTO.getContent());
+            Message message = new Message(sender, messageDTO.getContent(), chat);
             message.setCreatedAt(LocalDateTime.now());
             Message savedMessage = messageRepository.save(message);
 
@@ -49,18 +52,9 @@ public class OneToOneChatController {
             MessageDTO responseDTO = new MessageDTO();
             responseDTO.setId(savedMessage.getId());
             responseDTO.setSenderId(sender.getId());
-            responseDTO.setSenderName(sender.getName());
-            responseDTO.setReceiverId(receiver.getId());
             responseDTO.setContent(savedMessage.getContent());
             responseDTO.setTimestamp(savedMessage.getCreatedAt().format(formatter));
             responseDTO.setRead(false);
-
-            // Enviar solo al receptor
-            messagingTemplate.convertAndSendToUser(
-                receiver.getId().toString(),
-                "/queue/messages",
-                responseDTO
-            );
 
             // Enviar también al sender para confirmación
             messagingTemplate.convertAndSendToUser(
@@ -84,7 +78,6 @@ public class OneToOneChatController {
 
             MessageDTO responseDTO = new MessageDTO();
             responseDTO.setSenderId(sender.getId());
-            responseDTO.setSenderName(sender.getName());
             responseDTO.setContent(messageDTO.getContent());
             responseDTO.setTimestamp(LocalDateTime.now().format(formatter));
 
