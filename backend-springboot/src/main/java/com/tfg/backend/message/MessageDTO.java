@@ -1,10 +1,16 @@
 package com.tfg.backend.message;
 
+import io.micrometer.common.lang.Nullable;
+
 public class MessageDTO {
     private Long id;
     private Long senderId;
-    private Long receiverId;
-    private String senderName;
+
+    @Nullable
+    private Long OneToOneChatId;
+    @Nullable
+    private Long chatGroupId;
+
     private String content;
     private String timestamp;
     private boolean read;
@@ -12,9 +18,10 @@ public class MessageDTO {
     public MessageDTO() {
     }
 
-    public MessageDTO(Long senderId, Long receiverId, String content) {
+    public MessageDTO(Long senderId, String content, @Nullable Long OneToOneChatId, @Nullable Long chatGroupId) {
         this.senderId = senderId;
-        this.receiverId = receiverId;
+        this.OneToOneChatId = OneToOneChatId;
+        this.chatGroupId = chatGroupId;
         this.content = content;
     }
 
@@ -34,20 +41,12 @@ public class MessageDTO {
         this.senderId = senderId;
     }
 
-    public Long getReceiverId() {
-        return receiverId;
+    public Long getOneToOneChatId() {
+        return OneToOneChatId;
     }
 
-    public void setReceiverId(Long receiverId) {
-        this.receiverId = receiverId;
-    }
-
-    public String getSenderName() {
-        return senderName;
-    }
-
-    public void setSenderName(String senderName) {
-        this.senderName = senderName;
+    public void setOneToOneChatId(Long oneToOneChatId) {
+        OneToOneChatId = oneToOneChatId;
     }
 
     public String getContent() {

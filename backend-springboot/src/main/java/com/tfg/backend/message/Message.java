@@ -12,7 +12,12 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
+
+import com.tfg.backend.ChatGroup.ChatGroup;
+import com.tfg.backend.OneToOneChat.OneToOneChat;
 import com.tfg.backend.user.User;
+
+import io.micrometer.common.lang.Nullable;
 
 @Entity
 @Table(name = "messages")
@@ -25,7 +30,13 @@ public class Message {
     private User sender;
 
     @ManyToOne
-    private User receiver;
+    @Nullable
+    private OneToOneChat oneToOneChat;
+
+
+    @ManyToOne
+    @Nullable
+    private ChatGroup chatGroup;
 
     @NotBlank
     private String content;
@@ -38,10 +49,18 @@ public class Message {
     public Message() {
     }
 
-    public Message(User sender, User receiver, String content) {
+    public Message(User sender, String content, OneToOneChat oneToOneChat) {
         this.sender = sender;
-        this.receiver = receiver;
         this.content = content;
+        this.oneToOneChat = oneToOneChat;
+        this.createdAt = LocalDateTime.now();
+        this.read = false;
+    }
+
+    public Message(User sender, String content, @Nullable ChatGroup chatGroup) {
+        this.sender = sender;
+        this.content = content;
+        this.chatGroup = chatGroup;
         this.createdAt = LocalDateTime.now();
         this.read = false;
     }
@@ -62,12 +81,20 @@ public class Message {
         this.sender = sender;
     }
 
-    public User getReceiver() {
-        return receiver;
+    public OneToOneChat getOneToOneChat() {
+        return oneToOneChat;
     }
 
-    public void setReceiver(User receiver) {
-        this.receiver = receiver;
+    public void setOneToOneChat(OneToOneChat oneToOneChat) {
+        this.oneToOneChat = oneToOneChat;
+    }
+
+    public ChatGroup getChatGroup() {
+        return chatGroup;
+    }
+
+    public void setChatGroup(ChatGroup chatGroup) {
+        this.chatGroup = chatGroup;
     }
 
     public String getContent() {

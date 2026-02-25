@@ -21,10 +21,10 @@ public class OneToOneChat {
     private Long id;
 
     @ManyToOne
-    private User sender;
+    private User user1;
 
     @ManyToOne
-    private User receiver;
+    private User user2;
 
     @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
@@ -35,11 +35,10 @@ public class OneToOneChat {
     @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime deletedAt;
 
-    public OneToOneChat(Long senderId, Long receiverId) {
-        this.sender = new User();
-        this.sender.setId(senderId);
-        this.receiver = new User();
-        this.receiver.setId(receiverId);
+    public OneToOneChat(User user1, User user2) {
+        this.user1 = user1;
+        this.user2 = user2;
+        this.createdAt = LocalDateTime.now();
     }
 
     public Long getId() {
@@ -47,10 +46,10 @@ public class OneToOneChat {
     }
 
     public Long getSenderId() {
-        return sender.getId();
+        return user1.getId();
     }
 
     public Long getReceiverId() {
-        return receiver.getId();
+        return user2.getId();
     }
 }

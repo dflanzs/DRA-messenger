@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.tfg.backend.OneToOneChat.OneToOneChat;
 import com.tfg.backend.user.User;
 import com.tfg.backend.user.UserRepository;
 
@@ -54,13 +56,14 @@ public class MessageController {
     @PostMapping
     public ResponseEntity<Message> create(@Valid @RequestBody MessageDTO messageDTO) {
         Optional<User> senderOpt = userRepository.findById(messageDTO.getSenderId());
-        Optional<User> receiverOpt = userRepository.findById(messageDTO.getReceiverId());
-
-        if (senderOpt.isEmpty() || receiverOpt.isEmpty()) {
+        
+        if (senderOpt.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
-
-        Message message = new Message(senderOpt.get(), receiverOpt.get(), messageDTO.getContent());
+        
+        Optional<User> receiver = userRepository.findById(messageDTO.getOneToOneChatId());
+        OneToOneChat chat = new OneToOneChat(senderOpt.get(), receiver.get());
+        Message message = new Message(senderOpt.get(), messageDTO.getContent(), chat);
         Message savedMessage = messageRepository.save(message);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(savedMessage);
