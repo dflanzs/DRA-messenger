@@ -13,7 +13,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 
-import com.tfg.backend.ChatGroup.ChatGroup;
+import com.tfg.backend.GroupChat.GroupChat;
 import com.tfg.backend.OneToOneChat.OneToOneChat;
 import com.tfg.backend.user.User;
 
@@ -36,7 +36,7 @@ public class Message {
 
     @ManyToOne
     @Nullable
-    private ChatGroup chatGroup;
+    private GroupChat groupChat;
 
     @NotBlank
     private String content;
@@ -57,10 +57,10 @@ public class Message {
         this.read = false;
     }
 
-    public Message(User sender, String content, @Nullable ChatGroup chatGroup) {
+    public Message(User sender, String content, GroupChat groupChat) {
         this.sender = sender;
         this.content = content;
-        this.chatGroup = chatGroup;
+        this.groupChat = groupChat;
         this.createdAt = LocalDateTime.now();
         this.read = false;
     }
@@ -89,12 +89,12 @@ public class Message {
         this.oneToOneChat = oneToOneChat;
     }
 
-    public ChatGroup getChatGroup() {
-        return chatGroup;
+    public GroupChat getGroupChat() {
+        return groupChat;
     }
 
-    public void setChatGroup(ChatGroup chatGroup) {
-        this.chatGroup = chatGroup;
+    public void setGroupChat(GroupChat groupChat) {
+        this.groupChat = groupChat;
     }
 
     public String getContent() {
@@ -129,9 +129,9 @@ public class Message {
     }
 
     public Long[] getGroupReceiverIds() {
-        if (chatGroup == null) return null;
+        if (groupChat == null) return null;
 
-        Long[] usersIds = chatGroup.getUserIds();
+        Long[] usersIds = groupChat.getUserIds();
 
         Long[] receiverIds = new Long[usersIds.length - 1];
         for (int i = 0; i < usersIds.length - 1; i++) {

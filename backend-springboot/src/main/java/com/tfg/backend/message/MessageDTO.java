@@ -7,9 +7,10 @@ public class MessageDTO {
     private Long senderId;
 
     @Nullable
-    private Long OneToOneChatId;
+    private Long oneToOneChatId;
+
     @Nullable
-    private Long chatGroupId;
+    private Long groupChatId;
 
     private String content;
     private String timestamp;
@@ -18,11 +19,15 @@ public class MessageDTO {
     public MessageDTO() {
     }
 
-    public MessageDTO(Long senderId, String content, @Nullable Long OneToOneChatId, @Nullable Long chatGroupId) {
+    public MessageDTO(Long senderId, String content, Long chatId, boolean isGroupChat) {
         this.senderId = senderId;
-        this.OneToOneChatId = OneToOneChatId;
-        this.chatGroupId = chatGroupId;
         this.content = content;
+        if (isGroupChat) {
+            this.groupChatId = chatId;
+        } else {
+            this.oneToOneChatId = chatId; // Reusing the same variable for simplicity
+        }
+        this.read = false;
     }
 
     public Long getId() {
@@ -42,11 +47,19 @@ public class MessageDTO {
     }
 
     public Long getOneToOneChatId() {
-        return OneToOneChatId;
+        return oneToOneChatId;
     }
 
     public void setOneToOneChatId(Long oneToOneChatId) {
-        OneToOneChatId = oneToOneChatId;
+        this.oneToOneChatId = oneToOneChatId;
+    }
+
+    public Long getGroupChatId() {
+        return groupChatId;
+    }
+
+    public void setGroupChatId(Long groupChatId) {
+        this.groupChatId = groupChatId;
     }
 
     public String getContent() {
