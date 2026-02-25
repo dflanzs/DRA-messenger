@@ -7,6 +7,7 @@ import jakarta.persistence.Id;
 import java.time.LocalDateTime;
 
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.socket.WebSocketSession;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -34,7 +35,7 @@ public class User {
 
     private boolean onlineStatus;
 
-    private String ipAddress;
+    private WebSocketSession socketSession;
 
     @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
@@ -77,11 +78,11 @@ public class User {
         this.onlineStatus = onlineStatus;
     }
 
-    public String getIpAddress() {
-        return ipAddress;
+    public WebSocketSession getSocketSession() {
+        return socketSession;
     }
 
-    public void setIpAddress(String ipAddress) {
-        this.ipAddress = ipAddress;
+    public void setSocketSession(WebSocketSession socketSession) {
+        this.socketSession = socketSession;
     }
 }
