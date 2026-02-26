@@ -44,7 +44,7 @@ public class UserController {
         user.setId(null);
         User newUser = repository.save(user);
 
-        URI location =URI.create("/api/users/" + newUser.getId());
+        URI location = URI.create("/api/users/" + newUser.getId());
         if (location == null) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -95,24 +95,6 @@ public class UserController {
         user.setOnlineStatus(onlineStatus);
         User updatedUser = repository.save(user);
         
-        return ResponseEntity.ok(updatedUser);
-    }
-
-    @PutMapping("/{id}/ip-address")
-    public ResponseEntity<User> setIpAddress(@PathVariable Long id, @RequestBody String ipAddress) {
-        if (id == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        Optional<User> optionalUser = repository.findById(id);
-        if (optionalUser.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        User user = optionalUser.get();
-        user.setIpAddress(ipAddress);
-        User updatedUser = repository.save(user);
-
         return ResponseEntity.ok(updatedUser);
     }
 }

@@ -4,10 +4,12 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 
-import java.sql.Date;
+import java.time.LocalDateTime;
 
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.socket.WebSocketSession;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
@@ -21,6 +23,10 @@ public class User {
     private Long id;
 
     @NotBlank
+    @Column(unique = true)
+    private String publicKey;
+
+    @NotBlank
     private String name;
 
     @Email
@@ -29,16 +35,16 @@ public class User {
 
     private boolean onlineStatus;
 
-    private String ipAddress;
+    private WebSocketSession socketSession;
 
-    @DateTimeFormat(pattern = "yyyy-MM-dd")
-    private Date createdAt;
+    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime createdAt;
 
-    @DateTimeFormat(pattern = "yyyy-MM-dd")
-    private Date updatedAt;
+    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime updatedAt;
 
-    @DateTimeFormat(pattern = "yyyy-MM-dd")
-    private Date deletedAt;
+    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime deletedAt;
 
     public Long getId() {
         return id;
@@ -72,11 +78,11 @@ public class User {
         this.onlineStatus = onlineStatus;
     }
 
-    public String getIpAddress() {
-        return ipAddress;
+    public WebSocketSession getSocketSession() {
+        return socketSession;
     }
 
-    public void setIpAddress(String ipAddress) {
-        this.ipAddress = ipAddress;
+    public void setSocketSession(WebSocketSession socketSession) {
+        this.socketSession = socketSession;
     }
 }
