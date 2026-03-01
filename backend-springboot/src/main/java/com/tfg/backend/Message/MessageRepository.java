@@ -7,12 +7,9 @@ import java.util.List;
 
 public interface MessageRepository extends JpaRepository<Message, Long> {
     
-    @Query("SELECT m FROM Message m WHERE " +
-           "((m.sender.id = :userId1 AND m.receiver.id = :userId2) OR " +
-           "(m.sender.id = :userId2 AND m.receiver.id = :userId1)) " +
-           "ORDER BY m.createdAt ASC")
-    List<Message> findConversation(@Param("userId1") Long userId1, @Param("userId2") Long userId2);
+    @Query("SELECT m FROM Message m WHERE m.oneToOneChat.id = :chatId ORDER BY m.createdAt ASC")
+    List<Message> findByChatId(@Param("chatId") Long chatId);
 
-    @Query("SELECT m FROM Message m WHERE m.receiver.id = :userId AND m.read = false")
-    List<Message> findUnreadMessages(@Param("userId") Long userId);
+    @Query("SELECT m FROM Message m WHERE m.oneToOneChat IN :chats AND m.sender.id != :userId AND m.read = false")
+    List<Message> findUnreadMessagesInChats(@Param("chats") List<com.tfg.backend.OneToOneChat.OneToOneChat> chats, @Param("userId") Long userId);
 }

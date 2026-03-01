@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tfg.backend.OneToOneChat.OneToOneChat;
+import com.tfg.backend.OneToOneChat.OneToOneChatRepository;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserRepository;
 
@@ -28,6 +29,9 @@ public class MessageController {
 
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private OneToOneChatRepository oneToOneChatRepository;
 
     /**
      * Obtener todos los mensajes
@@ -115,7 +119,13 @@ public class MessageController {
             return ResponseEntity.badRequest().build();
         }
 
-        List<Message> conversation = messageRepository.findConversation(userId1, userId2);
+        // Find the chat between the two users
+        var chatOpt = oneToOneChatRepository.findChatBetweenUsers(userId1, userId2);
+        if (chatOpt.isEmpty()) {
+            return ResponseEntity.ok(List.of()); // No chat exists yet
+        }
+        
+        List<Message> conversation = messageRepository.findByChatId(chatOpt.get().getId());
         return ResponseEntity.ok(conversation);
     }
 
@@ -128,7 +138,11 @@ public class MessageController {
             return ResponseEntity.badRequest().build();
         }
 
-        List<Message> unreadMessages = messageRepository.findUnreadMessages(userId);
+        // Find all chats where the user is involved
+        List<com.tfg.backend.OneToOneChat.OneToOneChat> userChats = oneToOneChatRepository.findChatsForUser(userId);
+        
+        // Find unread messages in those chats where the sender is not the user
+        List<Message> unreadMessages = messageRepository.findUnreadMessagesInChats(userChats, userId);
         return ResponseEntity.ok(unreadMessages);
     }
 
