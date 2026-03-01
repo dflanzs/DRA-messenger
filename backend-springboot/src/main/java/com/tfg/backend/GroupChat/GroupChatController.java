@@ -31,11 +31,11 @@ public class GroupChatController {
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     /**
-     * Envía un mensaje privado a un usuario específico
-     * Cliente: stompClient.send("/app/private-message", {}, JSON.stringify({senderId, receiverId, content}))
+     * Envía un mensaje a un grupo
+     * Cliente: stompClient.send("/app/group-message", {}, JSON.stringify({senderId, groupChatId, content}))
      */
-    @MessageMapping("/private-message")
-    public void sendPrivateMessage(@Payload MessageDTO messageDTO) {
+    @MessageMapping("/group-message")
+    public void sendGroupMessage(@Payload MessageDTO messageDTO) {
         Optional<User> senderOpt = userRepository.findById(messageDTO.getSenderId());
         Optional<GroupChat> chatOpt = groupChatRepository.findById(messageDTO.getGroupChatId());
 
@@ -62,27 +62,6 @@ public class GroupChatController {
                 "/queue/messages",
                 responseDTO
             );
-        }
-    }
-
-    /**
-     * Envía un mensaje a un broadcast (todo el mundo lo recibe)
-     * Cliente: stompClient.send("/app/broadcast-message", {}, JSON.stringify({senderId, content}))
-     */
-    @MessageMapping("/broadcast-message")
-    public void sendBroadcastMessage(@Payload MessageDTO messageDTO) {
-        Optional<User> senderOpt = userRepository.findById(messageDTO.getSenderId());
-
-        if (senderOpt.isPresent()) {
-            User sender = senderOpt.get();
-
-            MessageDTO responseDTO = new MessageDTO();
-            responseDTO.setSenderId(sender.getId());
-            responseDTO.setContent(messageDTO.getContent());
-            responseDTO.setTimestamp(LocalDateTime.now().format(formatter));
-
-            // Enviar a todos los conectados
-            messagingTemplate.convertAndSend("/topic/broadcast", responseDTO);
         }
     }
 }
