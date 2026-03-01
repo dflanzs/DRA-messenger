@@ -35,6 +35,9 @@ public class OneToOneChat {
     @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime deletedAt;
 
+    public OneToOneChat() {
+    }
+
     public OneToOneChat(User user1, User user2) {
         this.user1 = user1;
         this.user2 = user2;
