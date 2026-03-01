@@ -12,6 +12,7 @@ import org.springframework.web.socket.WebSocketSession;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
@@ -38,6 +39,7 @@ public class User {
 
     private boolean onlineStatus;
 
+    @Transient
     private WebSocketSession socketSession;
 
     @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
