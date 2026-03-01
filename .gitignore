@@ -40,5 +40,9 @@ backend-springboot/.vscode/
 backend-springboot/target/
 backend-springboot/.gradle/
 
+# Configuration files with credentials
+backend-springboot/src/main/resources/application-local.yml
+backend-springboot/src/main/resources/application-prod.yml
+
 # macOS
 backend-springboot/.DS_Store
