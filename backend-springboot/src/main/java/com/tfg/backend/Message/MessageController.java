@@ -1,4 +1,4 @@
-package com.tfg.backend.message;
+package com.tfg.backend.Message;
 
 import jakarta.validation.Valid;
 import java.util.List;
@@ -16,8 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tfg.backend.OneToOneChat.OneToOneChat;
-import com.tfg.backend.user.User;
-import com.tfg.backend.user.UserRepository;
+import com.tfg.backend.User.User;
+import com.tfg.backend.User.UserRepository;
 
 @RestController
 @RequestMapping("/api/messages")

@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 
 import org.springframework.format.annotation.DateTimeFormat;
 
-import com.tfg.backend.user.User;
+import com.tfg.backend.User.User;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;

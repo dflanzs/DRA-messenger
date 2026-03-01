@@ -1,4 +1,4 @@
-package com.tfg.backend.user;
+package com.tfg.backend.User;
 
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;

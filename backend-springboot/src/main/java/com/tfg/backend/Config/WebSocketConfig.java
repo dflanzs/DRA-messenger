@@ -1,4 +1,4 @@
-package com.tfg.backend.config;
+package com.tfg.backend.Config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;

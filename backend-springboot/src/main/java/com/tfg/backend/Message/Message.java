@@ -1,4 +1,4 @@
-package com.tfg.backend.message;
+package com.tfg.backend.Message;
 
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -15,7 +15,7 @@ import jakarta.validation.constraints.NotBlank;
 
 import com.tfg.backend.GroupChat.GroupChat;
 import com.tfg.backend.OneToOneChat.OneToOneChat;
-import com.tfg.backend.user.User;
+import com.tfg.backend.User.User;
 
 import io.micrometer.common.lang.Nullable;
 

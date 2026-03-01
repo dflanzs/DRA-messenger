@@ -1,4 +1,4 @@
-package com.tfg.backend.message;
+package com.tfg.backend.Message;
 
 import io.micrometer.common.lang.Nullable;
 

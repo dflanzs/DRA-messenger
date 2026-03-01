@@ -1,4 +1,4 @@
-package com.tfg.backend.message;
+package com.tfg.backend.Message;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

@@ -5,13 +5,13 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
-import com.tfg.backend.user.User;
-import com.tfg.backend.user.UserRepository;
+import com.tfg.backend.User.User;
+import com.tfg.backend.User.UserRepository;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
-import com.tfg.backend.message.*;
+import com.tfg.backend.Message.*;
 
 @Controller
 public class OneToOneChatController {
