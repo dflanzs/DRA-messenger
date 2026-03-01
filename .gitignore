@@ -22,3 +22,23 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+.env
+
+# Eclipse
+backend-springboot/.settings/
+backend-springboot/.project
+backend-springboot/.classpath
+
+# IntelliJ IDEA
+backend-springboot/.idea/
+
+# VSCode
+backend-springboot/.vscode/
+
+# Build
+backend-springboot/target/
+backend-springboot/.gradle/
+
+# macOS
+backend-springboot/.DS_Store
