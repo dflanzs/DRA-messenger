@@ -4,7 +4,6 @@ import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +13,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.tfg.backend.User.dto.CreateUserDto;
+import com.tfg.backend.User.dto.UpdateUserDto;
 
 @RestController
 @RequestMapping("/api/users")
@@ -40,26 +42,49 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<User> create(@Valid @RequestBody User user) {
-        user.setId(null);
+    public ResponseEntity<User> create(@Valid @RequestBody CreateUserDto createUserDto) {
+        if (!UserService.validatePassword(createUserDto.getPassword())) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        User user = new User();
+        user.setName(createUserDto.getName());
+        user.setEmail(createUserDto.getEmail());
+        user.setPassword(createUserDto.getPassword());
+        user.setOnlineStatus(false);
         User newUser = repository.save(user);
 
         URI location = URI.create("/api/users/" + newUser.getId());
-        if (location == null) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
 
         return ResponseEntity.created(location).body(newUser);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<User> update(@PathVariable Long id, @Valid @RequestBody User user) {
+    public ResponseEntity<User> update(@PathVariable Long id, @Valid @RequestBody UpdateUserDto updateUserDto) {
         if (id == null) {
             return ResponseEntity.badRequest().build();
         }
 
         if (!repository.existsById(id)) {
             return ResponseEntity.notFound().build();
+        }
+
+        User user = new User();
+        switch (updateUserDto.getMode()) {
+            case UpdateUserDto.MODE_NAME:
+                user.setName(updateUserDto.getUpdatedValue());
+                break;
+            case UpdateUserDto.MODE_EMAIL:
+                user.setEmail(updateUserDto.getUpdatedValue());
+                break;
+            case UpdateUserDto.MODE_PASSWORD:
+                    if (!UserService.validatePassword(updateUserDto.getUpdatedValue())) {
+                        return ResponseEntity.badRequest().build();
+                    }
+                    user.setPassword(updateUserDto.getUpdatedValue());
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid mode: " + updateUserDto.getMode());
         }
 
         user.setId(id);
@@ -97,4 +122,6 @@ public class UserController {
         
         return ResponseEntity.ok(updatedUser);
     }
+
+    
 }
