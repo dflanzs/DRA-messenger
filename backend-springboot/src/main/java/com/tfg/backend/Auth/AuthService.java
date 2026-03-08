@@ -34,8 +34,8 @@ public class AuthService {
             throw new IllegalArgumentException("Password does not meet requirements");
         }
 
-        // Verificar si el email ya existe
-        Optional<User> existingUser = userRepository.findByEmail(registerDto.getEmail());
+        // Verificar si el email ya existe (solo usuarios no eliminados)
+        Optional<User> existingUser = userRepository.findByEmailAndDeletedAtIsNull(registerDto.getEmail());
         if (existingUser.isPresent()) {
             throw new IllegalArgumentException("Email already exists");
         }
@@ -61,9 +61,9 @@ public class AuthService {
                 )
             );
 
-            // Obtener el usuario autenticado
+            // Obtener el usuario autenticado (solo si no está eliminado)
             String email = authentication.getName();
-            User user = userRepository.findByEmail(email)
+            User user = userRepository.findByEmailAndDeletedAtIsNull(email)
                 .orElseThrow(() -> new BadCredentialsException("User not found"));
 
             // Actualizar estado online
