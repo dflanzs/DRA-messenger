@@ -1,8 +1,8 @@
-package com.tfg.backend.Message;
+package com.tfg.backend.Message.dto;
 
 import io.micrometer.common.lang.Nullable;
 
-public class MessageDTO {
+public class SendMessageDTO {
     private Long id;
     private Long senderId;
 
@@ -16,10 +16,10 @@ public class MessageDTO {
     private String timestamp;
     private boolean read;
 
-    public MessageDTO() {
+    public SendMessageDTO() {
     }
 
-    public MessageDTO(Long senderId, String content, Long chatId, boolean isGroupChat) {
+    public SendMessageDTO(Long senderId, String content, Long chatId, boolean isGroupChat) {
         this.senderId = senderId;
         this.content = content;
         if (isGroupChat) {
