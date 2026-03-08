@@ -28,7 +28,7 @@ public class UserController {
 
     @GetMapping
     public List<User> list() {
-        return repository.findAll();
+        return repository.findAllByDeletedAtIsNull();
     }
 
     @GetMapping("/{id}")
@@ -37,7 +37,7 @@ public class UserController {
             return ResponseEntity.badRequest().build();
         }
 
-        Optional<User> user = repository.findById(id);
+        Optional<User> user = repository.findByIdAndDeletedAtIsNull(id);
         return user.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
@@ -65,7 +65,7 @@ public class UserController {
             return ResponseEntity.badRequest().build();
         }
 
-        if (!repository.existsById(id)) {
+        if (!repository.existsByIdAndDeletedAtIsNull(id)) {
             return ResponseEntity.notFound().build();
         }
 
@@ -97,11 +97,16 @@ public class UserController {
             return ResponseEntity.badRequest().build();
         }
 
-        if (!repository.existsById(id)) {
+        Optional<User> optionalUser = repository.findByIdAndDeletedAtIsNull(id);
+        if (optionalUser.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
-        repository.deleteById(id);
+        // Soft delete: marcar usuario como eliminado
+        User user = optionalUser.get();
+        user.setDeletedAt(java.time.LocalDateTime.now());
+        repository.save(user);
+        
         return ResponseEntity.noContent().build();
     }
 
@@ -111,7 +116,7 @@ public class UserController {
             return ResponseEntity.badRequest().build();
         }
 
-        Optional<User> optionalUser = repository.findById(id);
+        Optional<User> optionalUser = repository.findByIdAndDeletedAtIsNull(id);
         if (optionalUser.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
