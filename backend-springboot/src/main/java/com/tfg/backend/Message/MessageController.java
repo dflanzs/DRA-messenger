@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tfg.backend.Message.dto.SendMessageDTO;
 import com.tfg.backend.OneToOneChat.OneToOneChat;
 import com.tfg.backend.OneToOneChat.OneToOneChatRepository;
 import com.tfg.backend.User.User;
@@ -58,7 +59,7 @@ public class MessageController {
      * Crear un nuevo mensaje
      */
     @PostMapping
-    public ResponseEntity<Message> create(@Valid @RequestBody MessageDTO messageDTO) {
+    public ResponseEntity<Message> create(@Valid @RequestBody SendMessageDTO messageDTO) {
         Optional<User> senderOpt = userRepository.findById(messageDTO.getSenderId());
         
         if (senderOpt.isEmpty()) {
@@ -77,7 +78,7 @@ public class MessageController {
      * Actualizar un mensaje
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Message> update(@PathVariable Long id, @Valid @RequestBody MessageDTO messageDTO) {
+    public ResponseEntity<Message> update(@PathVariable Long id, @Valid @RequestBody SendMessageDTO messageDTO) {
         if (id == null) {
             return ResponseEntity.badRequest().build();
         }

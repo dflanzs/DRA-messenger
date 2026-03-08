@@ -12,6 +12,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
 import com.tfg.backend.Message.*;
+import com.tfg.backend.Message.dto.SendMessageDTO;
 
 @Controller
 public class GroupChatController {
@@ -35,7 +36,7 @@ public class GroupChatController {
      * Cliente: stompClient.send("/app/group-message", {}, JSON.stringify({senderId, groupChatId, content}))
      */
     @MessageMapping("/group-message")
-    public void sendGroupMessage(@Payload MessageDTO messageDTO) {
+    public void sendGroupMessage(@Payload SendMessageDTO messageDTO) {
         Optional<User> senderOpt = userRepository.findById(messageDTO.getSenderId());
         Optional<GroupChat> chatOpt = groupChatRepository.findById(messageDTO.getGroupChatId());
 
@@ -49,7 +50,7 @@ public class GroupChatController {
             Message savedMessage = messageRepository.save(message);
 
             // Preparar DTO para enviar al cliente
-            MessageDTO responseDTO = new MessageDTO();
+            SendMessageDTO responseDTO = new SendMessageDTO();
             responseDTO.setId(savedMessage.getId());
             responseDTO.setSenderId(sender.getId());
             responseDTO.setContent(savedMessage.getContent());
