@@ -142,4 +142,136 @@ class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.onlineStatus").value(true));
     }
+
+    @Test
+    void update_returnsOk_whenUpdatingName() throws Exception {
+        User user = new User();
+        user.setId(5L);
+        user.setName("OldName");
+        user.setEmail("user@example.com");
+
+        User updatedUser = new User();
+        updatedUser.setId(5L);
+        updatedUser.setName("NewName");
+        updatedUser.setEmail("user@example.com");
+        updatedUser.setUpdatedAt(LocalDateTime.now());
+
+        when(userRepository.existsByIdAndDeletedAtIsNull(5L)).thenReturn(true);
+        when(userRepository.save(any(User.class))).thenReturn(updatedUser);
+
+        String body = """
+                {
+                  "updatedValue": "NewName",
+                  "mode": "name"
+                }
+                """;
+
+        mockMvc.perform(put("/api/users/5")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("NewName"));
+    }
+
+    @Test
+    void update_returnsOk_whenUpdatingEmail() throws Exception {
+        User updatedUser = new User();
+        updatedUser.setId(6L);
+        updatedUser.setName("User");
+        updatedUser.setEmail("newemail@example.com");
+        updatedUser.setUpdatedAt(LocalDateTime.now());
+
+        when(userRepository.existsByIdAndDeletedAtIsNull(6L)).thenReturn(true);
+        when(userRepository.save(any(User.class))).thenReturn(updatedUser);
+
+        String body = """
+                {
+                  "updatedValue": "newemail@example.com",
+                  "mode": "email"
+                }
+                """;
+
+        mockMvc.perform(put("/api/users/6")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("newemail@example.com"));
+    }
+
+    @Test
+    void update_returnsOk_whenUpdatingPassword() throws Exception {
+        User updatedUser = new User();
+        updatedUser.setId(7L);
+        updatedUser.setName("User");
+        updatedUser.setEmail("user@example.com");
+        updatedUser.setPassword("NewStrongP@ss1");
+        updatedUser.setUpdatedAt(LocalDateTime.now());
+
+        when(userRepository.existsByIdAndDeletedAtIsNull(7L)).thenReturn(true);
+        when(userRepository.save(any(User.class))).thenReturn(updatedUser);
+
+        String body = """
+                {
+                  "updatedValue": "NewStrongP@ss1",
+                  "mode": "password"
+                }
+                """;
+
+        mockMvc.perform(put("/api/users/7")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void update_returnsBadRequest_whenPasswordIsInvalid() throws Exception {
+        when(userRepository.existsByIdAndDeletedAtIsNull(7L)).thenReturn(true);
+
+        String body = """
+                {
+                  "updatedValue": "weak",
+                  "mode": "password"
+                }
+                """;
+
+        mockMvc.perform(put("/api/users/7")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void update_returnsNotFound_whenUserDoesNotExist() throws Exception {
+        when(userRepository.existsByIdAndDeletedAtIsNull(99L)).thenReturn(false);
+
+        String body = """
+                {
+                  "updatedValue": "NewName",
+                  "mode": "name"
+                }
+                """;
+
+        mockMvc.perform(put("/api/users/99")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void delete_returnsNotFound_whenUserDoesNotExist() throws Exception {
+        when(userRepository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(delete("/api/users/99"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void setOnlineStatus_returnsNotFound_whenUserDoesNotExist() throws Exception {
+        when(userRepository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(put("/api/users/99/online-status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("true"))
+                .andExpect(status().isNotFound());
+    }
 }
