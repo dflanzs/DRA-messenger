@@ -1,6 +1,6 @@
 package com.tfg.backend.User.dto;
 
-class UpdateOnlineStatusDto {
+public class UpdateOnlineStatusDto {
 
     private boolean online;
 
