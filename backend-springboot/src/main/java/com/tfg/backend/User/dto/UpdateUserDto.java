@@ -10,7 +10,7 @@ public class UpdateUserDto {
 
     public UpdateUserDto(String string, String mode) {
         this.updatedValue = string;
-        if (!mode.equals(MODE_NAME) && !mode.equals(MODE_EMAIL) && !mode.equals(MODE_PASSWORD)) {
+        if (mode == null || (!mode.equals(MODE_NAME) && !mode.equals(MODE_EMAIL) && !mode.equals(MODE_PASSWORD))) {
             throw new IllegalArgumentException("Invalid mode: " + mode);
         }
         this.mode = mode;
