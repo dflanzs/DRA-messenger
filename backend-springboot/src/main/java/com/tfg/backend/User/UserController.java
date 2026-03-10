@@ -21,9 +21,11 @@ import com.tfg.backend.User.dto.UpdateUserDto;
 @RequestMapping("/api/users")
 public class UserController {
     private final UserRepository repository;
+    private final UserService userService;
 
-    public UserController(UserRepository repository) {
+    public UserController(UserRepository repository, UserService userService) {
         this.repository = repository;
+        this.userService = userService;
     }
 
     @GetMapping
@@ -43,7 +45,7 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity<User> create(@Valid @RequestBody CreateUserDto createUserDto) {
-        if (!UserService.validatePassword(createUserDto.getPassword())) {
+        if (!userService.validatePassword(createUserDto.getPassword())) {
             return ResponseEntity.badRequest().build();
         }
 
@@ -78,7 +80,7 @@ public class UserController {
                 user.setEmail(updateUserDto.getUpdatedValue());
                 break;
             case UpdateUserDto.MODE_PASSWORD:
-                    if (!UserService.validatePassword(updateUserDto.getUpdatedValue())) {
+                    if (!userService.validatePassword(updateUserDto.getUpdatedValue())) {
                         return ResponseEntity.badRequest().build();
                     }
                     user.setPassword(updateUserDto.getUpdatedValue());
