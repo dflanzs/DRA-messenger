@@ -18,19 +18,21 @@ import java.util.UUID;
 @Service
 public class AuthService {
     private final UserRepository userRepository;
+    private final UserService userService;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, 
+    public AuthService(UserRepository userRepository, UserService userService, PasswordEncoder passwordEncoder,
                       AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
+        this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
     }
 
     public User register(RegisterDto registerDto) {
         // Validar password
-        if (!UserService.validatePassword(registerDto.getPassword())) {
+        if (!userService.validatePassword(registerDto.getPassword())) {
             throw new IllegalArgumentException("Password does not meet requirements");
         }
 
