@@ -34,6 +34,9 @@ class UserControllerTest {
     @MockBean
     private UserRepository userRepository;
 
+        @MockBean
+        private UserService userService;
+
     @MockBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
@@ -72,6 +75,7 @@ class UserControllerTest {
         savedUser.setPassword("StrongP@ss1");
 
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
+        when(userService.validatePassword("StrongP@ss1")).thenReturn(true);
 
         String body = """
                 {
@@ -92,6 +96,8 @@ class UserControllerTest {
 
     @Test
     void create_returnsBadRequest_whenPasswordIsInvalid() throws Exception {
+                                when(userService.validatePassword("weak")).thenReturn(false);
+
         String body = """
                 {
                   "username": "User",
@@ -209,6 +215,7 @@ class UserControllerTest {
 
         when(userRepository.existsByIdAndDeletedAtIsNull(7L)).thenReturn(true);
         when(userRepository.save(any(User.class))).thenReturn(updatedUser);
+        when(userService.validatePassword("NewStrongP@ss1")).thenReturn(true);
 
         String body = """
                 {
@@ -226,6 +233,7 @@ class UserControllerTest {
     @Test
     void update_returnsBadRequest_whenPasswordIsInvalid() throws Exception {
         when(userRepository.existsByIdAndDeletedAtIsNull(7L)).thenReturn(true);
+                when(userService.validatePassword("weak")).thenReturn(false);
 
         String body = """
                 {
