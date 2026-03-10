@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -172,7 +173,7 @@ class MessageControllerTest {
         Message unreadMessage = buildMessage(15L, sender, receiver, "No leido");
 
         when(oneToOneChatRepository.findChatsForUser(1L)).thenReturn(List.of(chat));
-        when(messageRepository.findUnreadMessagesInChats(any(List.class), any(Long.class)))
+        when(messageRepository.findUnreadMessagesInChats(anyList(), any(Long.class)))
                 .thenReturn(List.of(unreadMessage));
 
         mockMvc.perform(get("/api/messages/unread/1"))
