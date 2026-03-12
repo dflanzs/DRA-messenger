@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.tfg.backend.Message.dto.SendMessageDTO;
 import com.tfg.backend.OneToOneChat.OneToOneChat;
 import com.tfg.backend.OneToOneChat.OneToOneChatRepository;
+import com.tfg.backend.TrustCircles.TrustCirclesService;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserRepository;
 
@@ -33,6 +34,9 @@ public class MessageController {
     
     @Autowired
     private OneToOneChatRepository oneToOneChatRepository;
+
+    @Autowired
+    private TrustCirclesService trustCirclesService;
 
     /**
      * Obtener todos los mensajes
@@ -60,14 +64,42 @@ public class MessageController {
      */
     @PostMapping
     public ResponseEntity<Message> create(@Valid @RequestBody SendMessageDTO messageDTO) {
-        Optional<User> senderOpt = userRepository.findById(messageDTO.getSenderId());
-        
+        Optional<User> senderOpt = userRepository.findByIdAndDeletedAtIsNull(messageDTO.getSenderId());
+
         if (senderOpt.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
-        
-        Optional<User> receiver = userRepository.findById(messageDTO.getOneToOneChatId());
-        OneToOneChat chat = new OneToOneChat(senderOpt.get(), receiver.get());
+
+        Long oneToOneChatOrReceiverId = messageDTO.getOneToOneChatId();
+        if (oneToOneChatOrReceiverId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        User sender = senderOpt.get();
+        OneToOneChat chat;
+        Long receiverId;
+
+        Optional<OneToOneChat> existingChat = oneToOneChatRepository.findById(oneToOneChatOrReceiverId);
+        if (existingChat.isPresent()) {
+            chat = existingChat.get();
+            Long[] chatUserIds = chat.getUserIds();
+            if (!sender.getId().equals(chatUserIds[0]) && !sender.getId().equals(chatUserIds[1])) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            receiverId = sender.getId().equals(chatUserIds[0]) ? chatUserIds[1] : chatUserIds[0];
+        } else {
+            receiverId = oneToOneChatOrReceiverId;
+            Optional<User> receiverOpt = userRepository.findByIdAndDeletedAtIsNull(receiverId);
+            if (receiverOpt.isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            chat = oneToOneChatRepository.findChatBetweenUsers(sender.getId(), receiverId)
+                .orElseGet(() -> oneToOneChatRepository.save(new OneToOneChat(sender, receiverOpt.get())));
+        }
+
+        trustCirclesService.validateUsersCanCommunicate(sender.getId(), receiverId);
+
         Message message = new Message(senderOpt.get(), messageDTO.getContent(), chat);
         Message savedMessage = messageRepository.save(message);
 
@@ -120,6 +152,10 @@ public class MessageController {
             return ResponseEntity.badRequest().build();
         }
 
+        if (!trustCirclesService.canUsersCommunicate(userId1, userId2)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
         // Find the chat between the two users
         var chatOpt = oneToOneChatRepository.findChatBetweenUsers(userId1, userId2);
         if (chatOpt.isEmpty()) {
@@ -141,9 +177,21 @@ public class MessageController {
 
         // Find all chats where the user is involved
         List<com.tfg.backend.OneToOneChat.OneToOneChat> userChats = oneToOneChatRepository.findChatsForUser(userId);
+
+        List<com.tfg.backend.OneToOneChat.OneToOneChat> allowedChats = userChats.stream()
+            .filter(chat -> {
+                Long[] userIds = chat.getUserIds();
+                Long otherUserId = userId.equals(userIds[0]) ? userIds[1] : userIds[0];
+                return trustCirclesService.canUsersCommunicate(userId, otherUserId);
+            })
+            .toList();
+
+        if (allowedChats.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
         
         // Find unread messages in those chats where the sender is not the user
-        List<Message> unreadMessages = messageRepository.findUnreadMessagesInChats(userChats, userId);
+        List<Message> unreadMessages = messageRepository.findUnreadMessagesInChats(allowedChats, userId);
         return ResponseEntity.ok(unreadMessages);
     }
 
