@@ -7,6 +7,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserRepository;
+import com.tfg.backend.TrustCircles.TrustCirclesService;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
@@ -29,6 +30,9 @@ public class OneToOneChatController {
 	@Autowired
 	private SimpMessagingTemplate messagingTemplate;
 
+	@Autowired
+	private TrustCirclesService trustCirclesService;
+
 	private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
 	/**
@@ -45,6 +49,13 @@ public class OneToOneChatController {
 
 		if (senderOpt.isPresent()) {
 			User sender = senderOpt.get();
+			Long[] chatUserIds = chat.getUserIds();
+			if (!sender.getId().equals(chatUserIds[0]) && !sender.getId().equals(chatUserIds[1])) {
+				throw new IllegalArgumentException("El usuario remitente no pertenece al chat");
+			}
+
+			Long receiverUserId = sender.getId().equals(chatUserIds[0]) ? chatUserIds[1] : chatUserIds[0];
+			trustCirclesService.validateUsersCanCommunicate(sender.getId(), receiverUserId);
 
 			// Guardar el mensaje en la BD
 			Message message = new Message(sender, sendMessageDTO.getContent(), chat);
