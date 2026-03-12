@@ -2,8 +2,6 @@ package com.tfg.backend.Message;
 
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Optional;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -16,34 +14,23 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tfg.backend.Message.dto.SendMessageDTO;
-import com.tfg.backend.OneToOneChat.OneToOneChat;
-import com.tfg.backend.OneToOneChat.OneToOneChatRepository;
-import com.tfg.backend.TrustCircles.TrustCirclesService;
-import com.tfg.backend.User.User;
-import com.tfg.backend.User.UserRepository;
 
 @RestController
 @RequestMapping("/api/messages")
 public class MessageController {
 
-    @Autowired
-    private MessageRepository messageRepository;
+    private final MessageService messageService;
 
-    @Autowired
-    private UserRepository userRepository;
-    
-    @Autowired
-    private OneToOneChatRepository oneToOneChatRepository;
-
-    @Autowired
-    private TrustCirclesService trustCirclesService;
+    public MessageController(MessageService messageService) {
+        this.messageService = messageService;
+    }
 
     /**
      * Obtener todos los mensajes
      */
     @GetMapping
     public List<Message> list() {
-        return messageRepository.findAll();
+        return messageService.list();
     }
 
     /**
@@ -51,12 +38,7 @@ public class MessageController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<Message> get(@PathVariable Long id) {
-        if (id == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        Optional<Message> message = messageRepository.findById(id);
-        return message.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        return ResponseEntity.ok(messageService.getById(id));
     }
 
     /**
@@ -64,46 +46,7 @@ public class MessageController {
      */
     @PostMapping
     public ResponseEntity<Message> create(@Valid @RequestBody SendMessageDTO messageDTO) {
-        Optional<User> senderOpt = userRepository.findByIdAndDeletedAtIsNull(messageDTO.getSenderId());
-
-        if (senderOpt.isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        Long oneToOneChatOrReceiverId = messageDTO.getOneToOneChatId();
-        if (oneToOneChatOrReceiverId == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        User sender = senderOpt.get();
-        OneToOneChat chat;
-        Long receiverId;
-
-        Optional<OneToOneChat> existingChat = oneToOneChatRepository.findById(oneToOneChatOrReceiverId);
-        if (existingChat.isPresent()) {
-            chat = existingChat.get();
-            Long[] chatUserIds = chat.getUserIds();
-            if (!sender.getId().equals(chatUserIds[0]) && !sender.getId().equals(chatUserIds[1])) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
-            receiverId = sender.getId().equals(chatUserIds[0]) ? chatUserIds[1] : chatUserIds[0];
-        } else {
-            receiverId = oneToOneChatOrReceiverId;
-            Optional<User> receiverOpt = userRepository.findByIdAndDeletedAtIsNull(receiverId);
-            if (receiverOpt.isEmpty()) {
-                return ResponseEntity.badRequest().build();
-            }
-
-            chat = oneToOneChatRepository.findChatBetweenUsers(sender.getId(), receiverId)
-                .orElseGet(() -> oneToOneChatRepository.save(new OneToOneChat(sender, receiverOpt.get())));
-        }
-
-        trustCirclesService.validateUsersCanCommunicate(sender.getId(), receiverId);
-
-        Message message = new Message(senderOpt.get(), messageDTO.getContent(), chat);
-        Message savedMessage = messageRepository.save(message);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedMessage);
+        return ResponseEntity.status(HttpStatus.CREATED).body(messageService.create(messageDTO));
     }
 
     /**
@@ -111,19 +54,7 @@ public class MessageController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<Message> update(@PathVariable Long id, @Valid @RequestBody SendMessageDTO messageDTO) {
-        if (id == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        Optional<Message> optionalMessage = messageRepository.findById(id);
-        if (optionalMessage.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        Message message = optionalMessage.get();
-        message.setContent(messageDTO.getContent());
-
-        return ResponseEntity.ok(messageRepository.save(message));
+        return ResponseEntity.ok(messageService.update(id, messageDTO));
     }
 
     /**
@@ -131,15 +62,7 @@ public class MessageController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        if (id == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        if (!messageRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
-
-        messageRepository.deleteById(id);
+        messageService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
@@ -148,22 +71,7 @@ public class MessageController {
      */
     @GetMapping("/conversation/{userId1}/{userId2}")
     public ResponseEntity<List<Message>> getConversation(@PathVariable Long userId1, @PathVariable Long userId2) {
-        if (userId1 == null || userId2 == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        if (!trustCirclesService.canUsersCommunicate(userId1, userId2)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
-        // Find the chat between the two users
-        var chatOpt = oneToOneChatRepository.findChatBetweenUsers(userId1, userId2);
-        if (chatOpt.isEmpty()) {
-            return ResponseEntity.ok(List.of()); // No chat exists yet
-        }
-        
-        List<Message> conversation = messageRepository.findByChatId(chatOpt.get().getId());
-        return ResponseEntity.ok(conversation);
+        return ResponseEntity.ok(messageService.getConversation(userId1, userId2));
     }
 
     /**
@@ -171,28 +79,7 @@ public class MessageController {
      */
     @GetMapping("/unread/{userId}")
     public ResponseEntity<List<Message>> getUnreadMessages(@PathVariable Long userId) {
-        if (userId == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        // Find all chats where the user is involved
-        List<com.tfg.backend.OneToOneChat.OneToOneChat> userChats = oneToOneChatRepository.findChatsForUser(userId);
-
-        List<com.tfg.backend.OneToOneChat.OneToOneChat> allowedChats = userChats.stream()
-            .filter(chat -> {
-                Long[] userIds = chat.getUserIds();
-                Long otherUserId = userId.equals(userIds[0]) ? userIds[1] : userIds[0];
-                return trustCirclesService.canUsersCommunicate(userId, otherUserId);
-            })
-            .toList();
-
-        if (allowedChats.isEmpty()) {
-            return ResponseEntity.ok(List.of());
-        }
-        
-        // Find unread messages in those chats where the sender is not the user
-        List<Message> unreadMessages = messageRepository.findUnreadMessagesInChats(allowedChats, userId);
-        return ResponseEntity.ok(unreadMessages);
+        return ResponseEntity.ok(messageService.getUnreadMessages(userId));
     }
 
     /**
@@ -200,18 +87,6 @@ public class MessageController {
      */
     @PutMapping("/{id}/read")
     public ResponseEntity<Message> markAsRead(@PathVariable Long id) {
-        if (id == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        Optional<Message> optionalMessage = messageRepository.findById(id);
-        if (optionalMessage.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        Message message = optionalMessage.get();
-        message.setRead(true);
-
-        return ResponseEntity.ok(messageRepository.save(message));
+        return ResponseEntity.ok(messageService.markAsRead(id));
     }
 }
