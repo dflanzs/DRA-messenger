@@ -12,7 +12,6 @@ import com.tfg.backend.Security.JwtAuthenticationFilter;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -32,9 +31,6 @@ class UserControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private UserRepository userRepository;
-
-        @MockBean
         private UserService userService;
 
     @MockBean
@@ -50,7 +46,7 @@ class UserControllerTest {
         user.setName("User");
         user.setEmail("user@example.com");
 
-        when(userRepository.findAllByDeletedAtIsNull()).thenReturn(List.of(user));
+        when(userService.list()).thenReturn(List.of(user));
 
         mockMvc.perform(get("/api/users"))
                 .andExpect(status().isOk())
@@ -60,7 +56,7 @@ class UserControllerTest {
 
     @Test
     void get_returnsNotFound_whenUserDoesNotExist() throws Exception {
-        when(userRepository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
+                when(userService.getById(99L)).thenThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND));
 
         mockMvc.perform(get("/api/users/99"))
                 .andExpect(status().isNotFound());
@@ -74,8 +70,7 @@ class UserControllerTest {
         savedUser.setEmail("user@example.com");
         savedUser.setPassword("StrongP@ss1");
 
-        when(userRepository.save(any(User.class))).thenReturn(savedUser);
-        when(userService.validatePassword("StrongP@ss1")).thenReturn(true);
+        when(userService.create(any())).thenReturn(savedUser);
 
         String body = """
                 {
@@ -96,7 +91,7 @@ class UserControllerTest {
 
     @Test
     void create_returnsBadRequest_whenPasswordIsInvalid() throws Exception {
-                                when(userService.validatePassword("weak")).thenReturn(false);
+                when(userService.create(any())).thenThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST));
 
         String body = """
                 {
@@ -117,8 +112,7 @@ class UserControllerTest {
         User user = new User();
         user.setId(3L);
 
-        when(userRepository.findByIdAndDeletedAtIsNull(3L)).thenReturn(Optional.of(user));
-        when(userRepository.save(any(User.class))).thenReturn(user);
+        org.mockito.Mockito.doNothing().when(userService).delete(3L);
 
         mockMvc.perform(delete("/api/users/3"))
                 .andExpect(status().isNoContent());
@@ -139,8 +133,7 @@ class UserControllerTest {
         savedUser.setOnlineStatus(true);
         savedUser.setUpdatedAt(LocalDateTime.now());
 
-        when(userRepository.findByIdAndDeletedAtIsNull(4L)).thenReturn(Optional.of(user));
-        when(userRepository.save(any(User.class))).thenReturn(savedUser);
+        when(userService.setOnlineStatus(4L, true)).thenReturn(savedUser);
 
         mockMvc.perform(put("/api/users/4/online-status")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -162,8 +155,7 @@ class UserControllerTest {
         updatedUser.setEmail("user@example.com");
         updatedUser.setUpdatedAt(LocalDateTime.now());
 
-        when(userRepository.existsByIdAndDeletedAtIsNull(5L)).thenReturn(true);
-        when(userRepository.save(any(User.class))).thenReturn(updatedUser);
+        when(userService.update(any(), any())).thenReturn(updatedUser);
 
         String body = """
                 {
@@ -187,8 +179,7 @@ class UserControllerTest {
         updatedUser.setEmail("newemail@example.com");
         updatedUser.setUpdatedAt(LocalDateTime.now());
 
-        when(userRepository.existsByIdAndDeletedAtIsNull(6L)).thenReturn(true);
-        when(userRepository.save(any(User.class))).thenReturn(updatedUser);
+        when(userService.update(any(), any())).thenReturn(updatedUser);
 
         String body = """
                 {
@@ -213,9 +204,7 @@ class UserControllerTest {
         updatedUser.setPassword("NewStrongP@ss1");
         updatedUser.setUpdatedAt(LocalDateTime.now());
 
-        when(userRepository.existsByIdAndDeletedAtIsNull(7L)).thenReturn(true);
-        when(userRepository.save(any(User.class))).thenReturn(updatedUser);
-        when(userService.validatePassword("NewStrongP@ss1")).thenReturn(true);
+        when(userService.update(any(), any())).thenReturn(updatedUser);
 
         String body = """
                 {
@@ -232,8 +221,7 @@ class UserControllerTest {
 
     @Test
     void update_returnsBadRequest_whenPasswordIsInvalid() throws Exception {
-        when(userRepository.existsByIdAndDeletedAtIsNull(7L)).thenReturn(true);
-                when(userService.validatePassword("weak")).thenReturn(false);
+                when(userService.update(any(), any())).thenThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST));
 
         String body = """
                 {
@@ -250,7 +238,7 @@ class UserControllerTest {
 
     @Test
     void update_returnsNotFound_whenUserDoesNotExist() throws Exception {
-        when(userRepository.existsByIdAndDeletedAtIsNull(99L)).thenReturn(false);
+                when(userService.update(any(), any())).thenThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND));
 
         String body = """
                 {
@@ -267,7 +255,8 @@ class UserControllerTest {
 
     @Test
     void delete_returnsNotFound_whenUserDoesNotExist() throws Exception {
-        when(userRepository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
+        org.mockito.Mockito.doThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND))
+                .when(userService).delete(99L);
 
         mockMvc.perform(delete("/api/users/99"))
                 .andExpect(status().isNotFound());
@@ -275,7 +264,7 @@ class UserControllerTest {
 
     @Test
     void setOnlineStatus_returnsNotFound_whenUserDoesNotExist() throws Exception {
-        when(userRepository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
+                when(userService.setOnlineStatus(99L, true)).thenThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND));
 
         mockMvc.perform(put("/api/users/99/online-status")
                         .contentType(MediaType.APPLICATION_JSON)
