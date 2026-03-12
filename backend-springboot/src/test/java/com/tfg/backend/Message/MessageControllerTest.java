@@ -4,6 +4,7 @@ import com.tfg.backend.OneToOneChat.OneToOneChat;
 import com.tfg.backend.OneToOneChat.OneToOneChatRepository;
 import com.tfg.backend.Security.CustomUserDetailsService;
 import com.tfg.backend.Security.JwtAuthenticationFilter;
+import com.tfg.backend.TrustCircles.TrustCirclesService;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -45,6 +46,9 @@ class MessageControllerTest {
     private OneToOneChatRepository oneToOneChatRepository;
 
     @MockBean
+    private TrustCirclesService trustCirclesService;
+
+    @MockBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @MockBean
@@ -78,8 +82,10 @@ class MessageControllerTest {
         User receiver = buildUser(2L, "receiver@example.com");
         Message savedMessage = buildMessage(11L, sender, receiver, "Mensaje nuevo");
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(sender));
-        when(userRepository.findById(2L)).thenReturn(Optional.of(receiver));
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(sender));
+        when(userRepository.findByIdAndDeletedAtIsNull(2L)).thenReturn(Optional.of(receiver));
+        when(oneToOneChatRepository.findById(2L)).thenReturn(Optional.empty());
+        when(oneToOneChatRepository.findChatBetweenUsers(1L, 2L)).thenReturn(Optional.empty());
         when(messageRepository.save(any(Message.class))).thenReturn(savedMessage);
 
         String body = """
@@ -100,7 +106,7 @@ class MessageControllerTest {
 
     @Test
     void create_returnsBadRequest_whenSenderDoesNotExist() throws Exception {
-        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.empty());
 
         String body = """
                 {
@@ -156,6 +162,7 @@ class MessageControllerTest {
         setChatId(chat, 20L);
         Message message = buildMessage(14L, user1, user2, "Conversacion");
 
+        when(trustCirclesService.canUsersCommunicate(1L, 2L)).thenReturn(true);
         when(oneToOneChatRepository.findChatBetweenUsers(1L, 2L)).thenReturn(Optional.of(chat));
         when(messageRepository.findByChatId(20L)).thenReturn(List.of(message));
 
@@ -173,6 +180,7 @@ class MessageControllerTest {
         Message unreadMessage = buildMessage(15L, sender, receiver, "No leido");
 
         when(oneToOneChatRepository.findChatsForUser(1L)).thenReturn(List.of(chat));
+        when(trustCirclesService.canUsersCommunicate(1L, 2L)).thenReturn(true);
         when(messageRepository.findUnreadMessagesInChats(anyList(), any(Long.class)))
                 .thenReturn(List.of(unreadMessage));
 
