@@ -4,17 +4,20 @@ import com.tfg.backend.OneToOneChat.OneToOneChat;
 import com.tfg.backend.Security.CustomUserDetailsService;
 import com.tfg.backend.Security.JwtAuthenticationFilter;
 import com.tfg.backend.User.User;
+import com.tfg.backend.User.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -32,6 +35,9 @@ class MessageControllerTest {
 
     @MockBean
     private MessageService messageService;
+
+    @MockBean
+    private UserService userService;
 
     @MockBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -133,30 +139,17 @@ class MessageControllerTest {
     }
 
     @Test
-    void getConversation_returnsMessages_whenChatExists() throws Exception {
-        User user1 = buildUser(1L, "user1@example.com");
-        User user2 = buildUser(2L, "user2@example.com");
-        OneToOneChat chat = new OneToOneChat(user1, user2);
-        setChatId(chat, 20L);
-        Message message = buildMessage(14L, user1, user2, "Conversacion");
-
-        when(messageService.getConversation(1L, 2L)).thenReturn(List.of(message));
-
-        mockMvc.perform(get("/api/messages/conversation/1/2"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(14L))
-                .andExpect(jsonPath("$[0].content").value("Conversacion"));
-    }
-
-    @Test
+    @WithMockUser(username = "receiver@example.com")
     void getUnreadMessages_returnsUnreadMessages_forUserChats() throws Exception {
         User sender = buildUser(2L, "sender@example.com");
         User receiver = buildUser(1L, "receiver@example.com");
         Message unreadMessage = buildMessage(15L, sender, receiver, "No leido");
 
+        when(userService.getByEmail(anyString())).thenReturn(receiver);
         when(messageService.getUnreadMessages(1L)).thenReturn(List.of(unreadMessage));
 
-        mockMvc.perform(get("/api/messages/unread/1"))
+        mockMvc.perform(get("/api/messages/unread")
+                .principal(() -> "receiver@example.com"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(15L))
                 .andExpect(jsonPath("$[0].content").value("No leido"));

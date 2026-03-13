@@ -15,11 +15,10 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -63,58 +62,15 @@ class UserControllerTest {
     }
 
     @Test
-    void create_returnsCreated_whenPasswordIsValid() throws Exception {
-        User savedUser = new User();
-        savedUser.setId(10L);
-        savedUser.setName("User");
-        savedUser.setEmail("user@example.com");
-        savedUser.setPassword("StrongP@ss1");
-
-        when(userService.create(any())).thenReturn(savedUser);
-
-        String body = """
-                {
-                  "username": "User",
-                  "email": "user@example.com",
-                  "password": "StrongP@ss1"
-                }
-                """;
-
-        mockMvc.perform(post("/api/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isCreated())
-                .andExpect(header().string("Location", "/api/users/10"))
-                .andExpect(jsonPath("$.id").value(10L))
-                .andExpect(jsonPath("$.name").value("User"));
-    }
-
-    @Test
-    void create_returnsBadRequest_whenPasswordIsInvalid() throws Exception {
-                when(userService.create(any())).thenThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST));
-
-        String body = """
-                {
-                  "username": "User",
-                  "email": "user@example.com",
-                  "password": "weak"
-                }
-                """;
-
-        mockMvc.perform(post("/api/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
     void delete_returnsNoContent_whenUserExists() throws Exception {
         User user = new User();
         user.setId(3L);
 
         org.mockito.Mockito.doNothing().when(userService).delete(3L);
+        when(userService.getByEmail(anyString())).thenReturn(user);
 
-        mockMvc.perform(delete("/api/users/3"))
+        mockMvc.perform(delete("/api/users/3")
+                        .principal(() -> "user@example.com"))
                 .andExpect(status().isNoContent());
     }
 
@@ -133,21 +89,25 @@ class UserControllerTest {
         savedUser.setOnlineStatus(true);
         savedUser.setUpdatedAt(LocalDateTime.now());
 
+        when(userService.getByEmail(anyString())).thenReturn(user);
         when(userService.setOnlineStatus(4L, true)).thenReturn(savedUser);
 
         mockMvc.perform(put("/api/users/4/online-status")
+                        .principal(() -> "user@example.com")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.onlineStatus").value(true));
     }
 
-    @Test
+        @Test
     void update_returnsOk_whenUpdatingName() throws Exception {
         User user = new User();
         user.setId(5L);
         user.setName("OldName");
         user.setEmail("user@example.com");
+
+                when(userService.getByEmail(anyString())).thenReturn(user);
 
         User updatedUser = new User();
         updatedUser.setId(5L);
@@ -165,13 +125,14 @@ class UserControllerTest {
                 """;
 
         mockMvc.perform(put("/api/users/5")
+                        .principal(() -> "user@example.com")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("NewName"));
     }
 
-    @Test
+        @Test
     void update_returnsOk_whenUpdatingEmail() throws Exception {
         User updatedUser = new User();
         updatedUser.setId(6L);
@@ -179,6 +140,9 @@ class UserControllerTest {
         updatedUser.setEmail("newemail@example.com");
         updatedUser.setUpdatedAt(LocalDateTime.now());
 
+                User currentUser = new User();
+                currentUser.setId(6L);
+                when(userService.getByEmail(anyString())).thenReturn(currentUser);
         when(userService.update(any(), any())).thenReturn(updatedUser);
 
         String body = """
@@ -189,13 +153,14 @@ class UserControllerTest {
                 """;
 
         mockMvc.perform(put("/api/users/6")
+                        .principal(() -> "user@example.com")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("newemail@example.com"));
     }
 
-    @Test
+        @Test
     void update_returnsOk_whenUpdatingPassword() throws Exception {
         User updatedUser = new User();
         updatedUser.setId(7L);
@@ -204,6 +169,9 @@ class UserControllerTest {
         updatedUser.setPassword("NewStrongP@ss1");
         updatedUser.setUpdatedAt(LocalDateTime.now());
 
+        User currentUser = new User();
+        currentUser.setId(7L);
+        when(userService.getByEmail(anyString())).thenReturn(currentUser);
         when(userService.update(any(), any())).thenReturn(updatedUser);
 
         String body = """
@@ -214,13 +182,17 @@ class UserControllerTest {
                 """;
 
         mockMvc.perform(put("/api/users/7")
+                        .principal(() -> "user@example.com")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk());
     }
 
-    @Test
+        @Test
     void update_returnsBadRequest_whenPasswordIsInvalid() throws Exception {
+                User currentUser = new User();
+                currentUser.setId(7L);
+                when(userService.getByEmail(anyString())).thenReturn(currentUser);
                 when(userService.update(any(), any())).thenThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST));
 
         String body = """
@@ -231,13 +203,17 @@ class UserControllerTest {
                 """;
 
         mockMvc.perform(put("/api/users/7")
+                        .principal(() -> "user@example.com")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest());
     }
 
-    @Test
+        @Test
     void update_returnsNotFound_whenUserDoesNotExist() throws Exception {
+                User currentUser = new User();
+                currentUser.setId(99L);
+                when(userService.getByEmail(anyString())).thenReturn(currentUser);
                 when(userService.update(any(), any())).thenThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND));
 
         String body = """
@@ -248,25 +224,34 @@ class UserControllerTest {
                 """;
 
         mockMvc.perform(put("/api/users/99")
+                        .principal(() -> "user@example.com")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isNotFound());
     }
 
-    @Test
+        @Test
     void delete_returnsNotFound_whenUserDoesNotExist() throws Exception {
+                User currentUser = new User();
+                currentUser.setId(99L);
+                when(userService.getByEmail(anyString())).thenReturn(currentUser);
         org.mockito.Mockito.doThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND))
                 .when(userService).delete(99L);
 
-        mockMvc.perform(delete("/api/users/99"))
+        mockMvc.perform(delete("/api/users/99")
+                        .principal(() -> "user@example.com"))
                 .andExpect(status().isNotFound());
     }
 
-    @Test
+        @Test
     void setOnlineStatus_returnsNotFound_whenUserDoesNotExist() throws Exception {
+                User currentUser = new User();
+                currentUser.setId(99L);
+                when(userService.getByEmail(anyString())).thenReturn(currentUser);
                 when(userService.setOnlineStatus(99L, true)).thenThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND));
 
         mockMvc.perform(put("/api/users/99/online-status")
+                        .principal(() -> "user@example.com")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("true"))
                 .andExpect(status().isNotFound());

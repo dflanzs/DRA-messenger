@@ -109,23 +109,6 @@ public class MessageService {
         messageRepository.deleteById(id);
     }
 
-    @Transactional(readOnly = true)
-    public List<Message> getConversation(Long userId1, Long userId2) {
-        if (userId1 == null || userId2 == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ids inválidos");
-        }
-
-        if (!trustCirclesService.canUsersCommunicate(userId1, userId2)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Comunicación no permitida");
-        }
-
-        var chatOpt = oneToOneChatRepository.findChatBetweenUsers(userId1, userId2);
-        if (chatOpt.isEmpty()) {
-            return List.of();
-        }
-
-        return messageRepository.findByChatId(chatOpt.get().getId());
-    }
 
     @Transactional(readOnly = true)
     public List<Message> getUnreadMessages(Long userId) {

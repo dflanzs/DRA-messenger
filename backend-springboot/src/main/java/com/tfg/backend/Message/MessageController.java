@@ -1,6 +1,7 @@
 package com.tfg.backend.Message;
 
 import jakarta.validation.Valid;
+import java.security.Principal;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,17 +13,21 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.tfg.backend.Message.dto.SendMessageDTO;
+import com.tfg.backend.User.UserService;
 
 @RestController
 @RequestMapping("/api/messages")
 public class MessageController {
 
     private final MessageService messageService;
+    private final UserService userService;
 
-    public MessageController(MessageService messageService) {
+    public MessageController(MessageService messageService, UserService userService) {
         this.messageService = messageService;
+        this.userService = userService;
     }
 
     /**
@@ -67,18 +72,15 @@ public class MessageController {
     }
 
     /**
-     * Obtener la conversación entre dos usuarios
-     */
-    @GetMapping("/conversation/{userId1}/{userId2}")
-    public ResponseEntity<List<Message>> getConversation(@PathVariable Long userId1, @PathVariable Long userId2) {
-        return ResponseEntity.ok(messageService.getConversation(userId1, userId2));
-    }
-
-    /**
      * Obtener mensajes no leídos de un usuario
      */
-    @GetMapping("/unread/{userId}")
-    public ResponseEntity<List<Message>> getUnreadMessages(@PathVariable Long userId) {
+    @GetMapping("/unread")
+    public ResponseEntity<List<Message>> getUnreadMessages(Principal principal) {
+        if (principal == null) {
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED,
+                "Usuario no autenticado");
+        }
+        Long userId = userService.getByEmail(principal.getName()).getId();
         return ResponseEntity.ok(messageService.getUnreadMessages(userId));
     }
 

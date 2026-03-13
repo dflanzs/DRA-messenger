@@ -1,19 +1,19 @@
 package com.tfg.backend.User;
 
 import jakarta.validation.Valid;
-import java.net.URI;
+import java.security.Principal;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
-import com.tfg.backend.User.dto.CreateUserDto;
 import com.tfg.backend.User.dto.UpdateUserDto;
 
 @RestController
@@ -35,30 +35,37 @@ public class UserController {
         return ResponseEntity.ok(userService.getById(id));
     }
 
-    @PostMapping
-    public ResponseEntity<User> create(@Valid @RequestBody CreateUserDto createUserDto) {
-        User newUser = userService.create(createUserDto);
-
-        URI location = URI.create("/api/users/" + newUser.getId());
-
-        return ResponseEntity.created(location).body(newUser);
-    }
-
     @PutMapping("/{id}")
-    public ResponseEntity<User> update(@PathVariable Long id, @Valid @RequestBody UpdateUserDto updateUserDto) {
+    public ResponseEntity<User> update(@PathVariable Long id,
+                                       @Valid @RequestBody UpdateUserDto updateUserDto,
+                                       Principal principal) {
+        requireOwnership(principal, id);
         return ResponseEntity.ok(userService.update(id, updateUserDto));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id, Principal principal) {
+        requireOwnership(principal, id);
         userService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}/online-status")
-    public ResponseEntity<User> setOnlineStatus(@PathVariable Long id, @RequestBody boolean onlineStatus) {
+    public ResponseEntity<User> setOnlineStatus(@PathVariable Long id,
+                                                @RequestBody boolean onlineStatus,
+                                                Principal principal) {
+        requireOwnership(principal, id);
         return ResponseEntity.ok(userService.setOnlineStatus(id, onlineStatus));
     }
 
-    
+    private void requireOwnership(Principal principal, Long userId) {
+        if (principal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado");
+        }
+        User current = userService.getByEmail(principal.getName());
+        if (!current.getId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "No tienes permiso para modificar este usuario");
+        }
+    }
 }
