@@ -8,6 +8,7 @@ import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserRepository;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.security.Principal;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,8 +38,11 @@ public class OneToOneChatService {
     }
 
     @Transactional
-    public void sendPrivateMessage(SendMessageDTO sendMessageDTO) {
-        User sender = userRepository.findById(sendMessageDTO.getSenderId())
+    public void sendPrivateMessage(SendMessageDTO sendMessageDTO, Principal senderPrincipal) {
+        if (senderPrincipal == null) {
+            throw new IllegalArgumentException("Usuario no autenticado");
+        }
+        User sender = userRepository.findByEmailAndDeletedAtIsNull(senderPrincipal.getName())
             .orElseThrow(() -> new IllegalArgumentException("Remitente no encontrado"));
 
         Long chatId = sendMessageDTO.getOneToOneChatId();
@@ -65,17 +69,5 @@ public class OneToOneChatService {
         responseDTO.setRead(false);
 
         messagingTemplate.convertAndSendToUser(sender.getId().toString(), "/queue/messages", responseDTO);
-    }
-
-    public void sendBroadcastMessage(SendMessageDTO sendMessageDTO) {
-        User sender = userRepository.findById(sendMessageDTO.getSenderId())
-            .orElseThrow(() -> new IllegalArgumentException("Remitente no encontrado"));
-
-        SendMessageDTO responseDTO = new SendMessageDTO();
-        responseDTO.setSenderId(sender.getId());
-        responseDTO.setContent(sendMessageDTO.getContent());
-        responseDTO.setTimestamp(LocalDateTime.now().format(formatter));
-
-        messagingTemplate.convertAndSend("/topic/broadcast", responseDTO);
     }
 }
