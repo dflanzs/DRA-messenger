@@ -72,25 +72,6 @@ public class MessageController {
     }
 
     /**
-     * Obtener la conversación entre dos usuarios
-     */
-    @GetMapping("/conversation/{userId1}/{userId2}")
-    public ResponseEntity<List<Message>> getConversation(@PathVariable Long userId1,
-                                                         @PathVariable Long userId2,
-                                                         Principal principal) {
-        if (principal == null) {
-            throw new ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED,
-                "Usuario no autenticado");
-        }
-        Long currentUserId = userService.getByEmail(principal.getName()).getId();
-        if (!currentUserId.equals(userId1) && !currentUserId.equals(userId2)) {
-            throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,
-                "No eres participante de esta conversación");
-        }
-        return ResponseEntity.ok(messageService.getConversation(userId1, userId2));
-    }
-
-    /**
      * Obtener mensajes no leídos de un usuario
      */
     @GetMapping("/unread")
