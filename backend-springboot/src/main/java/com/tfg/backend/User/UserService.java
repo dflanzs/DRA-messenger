@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -14,18 +15,27 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class UserService {
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public UserService() {
         this.userRepository = null;
+        this.passwordEncoder = null;
     }
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional(readOnly = true)
     public List<User> list() {
         return userRepository.findAllByDeletedAtIsNull();
+    }
+
+    @Transactional(readOnly = true)
+    public User getByEmail(String email) {
+        return userRepository.findByEmailAndDeletedAtIsNull(email)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
     }
 
     @Transactional(readOnly = true)
@@ -47,7 +57,7 @@ public class UserService {
         User user = new User();
         user.setName(createUserDto.getName());
         user.setEmail(createUserDto.getEmail());
-        user.setPassword(createUserDto.getPassword());
+        user.setPassword(passwordEncoder.encode(createUserDto.getPassword()));
         user.setOnlineStatus(false);
 
         return userRepository.save(user);
@@ -75,7 +85,7 @@ public class UserService {
                 if (!validatePassword(updateUserDto.getUpdatedValue())) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Contraseña inválida");
                 }
-                user.setPassword(updateUserDto.getUpdatedValue());
+                user.setPassword(passwordEncoder.encode(updateUserDto.getUpdatedValue()));
                 break;
             default:
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Modo de actualización inválido");
