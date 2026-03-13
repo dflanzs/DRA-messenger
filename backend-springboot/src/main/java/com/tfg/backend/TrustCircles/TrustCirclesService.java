@@ -48,6 +48,7 @@ public class TrustCirclesService {
 
 		TrustCircles circle = new TrustCircles();
 		circle.setName(name.trim());
+		circle.setDomainKeyId(java.util.UUID.randomUUID().toString());
 		circle.setConsentDomain(false);
 
 		if (userIds != null) {
@@ -99,6 +100,7 @@ public class TrustCirclesService {
 
 		TrustCircles consentDomain = new TrustCircles();
 		consentDomain.setName(buildConsentCircleName(userId1, userId2));
+		consentDomain.setDomainKeyId(java.util.UUID.randomUUID().toString());
 		consentDomain.setConsentDomain(true);
 		consentDomain.addMember(user1);
 		consentDomain.addMember(user2);
@@ -122,6 +124,17 @@ public class TrustCirclesService {
 				HttpStatus.FORBIDDEN,
 				"Los usuarios no comparten círculo de confianza ni consentimiento cruzado válido"
 			);
+		}
+	}
+
+	@Transactional(readOnly = true)
+	public void validateCircleMembership(Long circleId, Long userId) {
+		TrustCircles circle = getById(circleId);
+		boolean isMember = circle.getMembers().stream()
+			.anyMatch(member -> member.getId().equals(userId));
+		if (!isMember) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+				"No tienes permiso para gestionar este círculo");
 		}
 	}
 
