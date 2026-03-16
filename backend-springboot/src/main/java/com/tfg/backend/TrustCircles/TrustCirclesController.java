@@ -93,19 +93,14 @@ public class TrustCirclesController {
         return ResponseEntity.ok(consentDomain);
     }
 
-    @PreAuthorize("@authorizationService.isSelfOrAdmin(authentication, #userId)")
-    @GetMapping("/can-communicate")
+    @PreAuthorize("@authorizationService.isSelf(authentication, #userId)")
+    @GetMapping("/can-communicate/{userId}")
     public ResponseEntity<Map<String, Boolean>> canCommunicate(
-        @RequestParam Long userId1,
+        @PathVariable Long userId,
         @RequestParam Long userId2,
         Principal principal
     ) {
-        Long currentUserId = getAuthenticatedUserId(principal);
-        if (!currentUserId.equals(userId1) && !currentUserId.equals(userId2)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                "Solo puedes consultar tu propia comunicación");
-        }
-        boolean canCommunicate = trustCirclesService.canUsersCommunicate(userId1, userId2);
+        boolean canCommunicate = trustCirclesService.canUsersCommunicate(userId, userId2);
         return ResponseEntity.ok(Map.of("allowed", canCommunicate));
     }
 
