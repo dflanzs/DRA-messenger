@@ -13,135 +13,147 @@ import org.springframework.web.socket.WebSocketSession;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.tfg.backend.Enums.UserRole;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
 @Entity
 @Table(name = "users")
 public class User {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @NotBlank
-    @Column(unique = true)
-    private String publicKey;
+	@NotBlank
+	@Column(unique = true)
+	private String publicKey;
 
-    @NotBlank
-    private String name;
+	@NotBlank
+	private String name;
 
-    @Email
-    @NotBlank
-    private String email;
+	@Email
+	@NotBlank
+	private String email;
 
-    @JsonIgnore
-    @NotBlank
-    private String password;
+	@JsonIgnore
+	@NotBlank
+	private String password;
 
-    private boolean onlineStatus;
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false)
+	private UserRole role = UserRole.USER;
 
-    @Transient
-    private WebSocketSession socketSession;
+	private boolean onlineStatus;
 
-    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime createdAt;
+	@Transient
+	private WebSocketSession socketSession;
 
-    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime updatedAt;
+	@DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+	private LocalDateTime createdAt;
 
-    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime deletedAt;
+	@DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+	private LocalDateTime updatedAt;
 
-    public Long getId() {
-        return id;
-    }
+	@DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+	private LocalDateTime deletedAt;
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+	public Long getId() {
+		return id;
+	}
 
-    public String getPublicKey() {
-        return publicKey;
-    }
+	public void setId(Long id) {
+		this.id = id;
+	}
 
-    public void setPublicKey(String publicKey) {
-        this.publicKey = publicKey;
-    }
+	public String getPublicKey() {
+		return publicKey;
+	}
 
-    public String getName() {
-        return name;
-    }
+	public void setPublicKey(String publicKey) {
+		this.publicKey = publicKey;
+	}
 
-    public void setName(String name) {
-        this.name = name;
-    }
+	public String getName() {
+		return name;
+	}
 
-    public String getEmail() {
-        return email;
-    }
+	public void setName(String name) {
+		this.name = name;
+	}
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
+	public String getEmail() {
+		return email;
+	}
 
-    public String getPassword() {
-        return password;
-    }
+	public void setEmail(String email) {
+		this.email = email;
+	}
 
-    public void setPassword(String password) {
-        this.password = password;
-    }
-    
-    public boolean isOnlineStatus() {
-        return onlineStatus;
-    }
+	public String getPassword() {
+		return password;
+	}
 
-    public void setOnlineStatus(boolean onlineStatus) {
-        this.onlineStatus = onlineStatus;
-    }
+	public void setPassword(String password) {
+		this.password = password;
+	}
 
-    public WebSocketSession getSocketSession() {
-        return socketSession;
-    }
+	public UserRole getRole() {
+		return role;
+	}
+	
+	public boolean isOnlineStatus() {
+		return onlineStatus;
+	}
 
-    public void setSocketSession(WebSocketSession socketSession) {
-        this.socketSession = socketSession;
-    }
+	public void setOnlineStatus(boolean onlineStatus) {
+		this.onlineStatus = onlineStatus;
+	}
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
+	public WebSocketSession getSocketSession() {
+		return socketSession;
+	}
 
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
+	public void setSocketSession(WebSocketSession socketSession) {
+		this.socketSession = socketSession;
+	}
 
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
+	public LocalDateTime getCreatedAt() {
+		return createdAt;
+	}
 
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
+	public void setCreatedAt(LocalDateTime createdAt) {
+		this.createdAt = createdAt;
+	}
 
-    public LocalDateTime getDeletedAt() {
-        return deletedAt;
-    }
+	public LocalDateTime getUpdatedAt() {
+		return updatedAt;
+	}
 
-    public void setDeletedAt(LocalDateTime deletedAt) {
-        this.deletedAt = deletedAt;
-    }
+	public void setUpdatedAt(LocalDateTime updatedAt) {
+		this.updatedAt = updatedAt;
+	}
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
+	public LocalDateTime getDeletedAt() {
+		return deletedAt;
+	}
 
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
+	public void setDeletedAt(LocalDateTime deletedAt) {
+		this.deletedAt = deletedAt;
+	}
+
+	@PrePersist
+	protected void onCreate() {
+		createdAt = LocalDateTime.now();
+	}
+
+	@PreUpdate
+	protected void onUpdate() {
+		updatedAt = LocalDateTime.now();
+	}
 }
