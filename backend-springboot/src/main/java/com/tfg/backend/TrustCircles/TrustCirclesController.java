@@ -8,6 +8,7 @@ import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,25 +32,26 @@ public class TrustCirclesController {
         this.userService = userService;
     }
 
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @GetMapping
     public List<TrustCircles> list() {
-        return trustCirclesService.list();  // any authenticated user; scoped by ownership in future
+        return trustCirclesService.list();
     }
 
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<TrustCircles> get(@PathVariable Long id) {
         return ResponseEntity.ok(trustCirclesService.getById(id));
     }
 
+    @PreAuthorize("@authorizationService.isSelfOrAdmin(authentication, #userId)")
     @GetMapping("/users/{userId}")
     public List<TrustCircles> getUserCircles(@PathVariable Long userId, Principal principal) {
-        Long currentUserId = getAuthenticatedUserId(principal);
-        if (!currentUserId.equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo puedes ver tus propios círculos");
-        }
         return trustCirclesService.getUserCircles(userId);
     }
 
+    // Solo admin porque para usuarios será otro endpoint
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @PostMapping
     public ResponseEntity<TrustCircles> create(@RequestBody CreateTrustCircleDto dto,
                                                Principal principal) {
@@ -64,6 +66,7 @@ public class TrustCirclesController {
         return ResponseEntity.created(URI.create("/api/trust-circles/" + circle.getId())).body(circle);
     }
 
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/{circleId}/users/{userId}")
     public ResponseEntity<TrustCircles> addUser(@PathVariable Long circleId, @PathVariable Long userId,
                                                 Principal principal) {
@@ -72,6 +75,7 @@ public class TrustCirclesController {
         return ResponseEntity.ok(trustCirclesService.addUserToCircle(circleId, userId));
     }
 
+    @PreAuthorize("@authorizationService.isSelfOrAdmin(authentication, #userId)")
     @DeleteMapping("/{circleId}/users/{userId}")
     public ResponseEntity<TrustCircles> removeUser(@PathVariable Long circleId, @PathVariable Long userId,
                                                    Principal principal) {
@@ -80,6 +84,7 @@ public class TrustCirclesController {
         return ResponseEntity.ok(trustCirclesService.removeUserFromCircle(circleId, userId));
     }
 
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/consents")
     public ResponseEntity<TrustCircles> grantCrossConsent(@RequestBody CrossConsentDto dto,
                                                           Principal principal) {
@@ -88,6 +93,7 @@ public class TrustCirclesController {
         return ResponseEntity.ok(consentDomain);
     }
 
+    @PreAuthorize("@authorizationService.isSelfOrAdmin(authentication, #userId)")
     @GetMapping("/can-communicate")
     public ResponseEntity<Map<String, Boolean>> canCommunicate(
         @RequestParam Long userId1,
