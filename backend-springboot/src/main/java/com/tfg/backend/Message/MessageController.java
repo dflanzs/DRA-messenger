@@ -17,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.tfg.backend.Message.dto.SendMessageDTO;
 import com.tfg.backend.User.UserService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/messages")
@@ -33,6 +34,7 @@ public class MessageController {
     /**
      * Obtener todos los mensajes
      */
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @GetMapping
     public List<Message> list() {
         return messageService.list();
@@ -41,6 +43,7 @@ public class MessageController {
     /**
      * Obtener un mensaje por ID
      */
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<Message> get(@PathVariable Long id) {
         return ResponseEntity.ok(messageService.getById(id));
@@ -65,6 +68,7 @@ public class MessageController {
     /**
      * Eliminar un mensaje
      */
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         messageService.delete(id);
