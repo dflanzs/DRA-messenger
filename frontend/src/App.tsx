@@ -8,11 +8,16 @@ import { MessagesPage } from './pages/MessagesPage';
 import { PrivateChatsPage } from './pages/PrivateChatsPage';
 import { TrustCirclesPage } from './pages/TrustCirclesPage';
 import { UsersPage } from './pages/UsersPage';
+import RegisterPage from './pages/RegisterPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
+import NotificationsPage from './pages/NotificationsPage';
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
@@ -22,6 +27,7 @@ export default function App() {
           <Route path="/privados" element={<PrivateChatsPage />} />
           <Route path="/mensajes" element={<MessagesPage />} />
           <Route path="/circulos" element={<TrustCirclesPage />} />
+          <Route path="/notificaciones" element={<NotificationsPage />} />
         </Route>
       </Route>
 
