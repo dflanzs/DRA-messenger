@@ -58,6 +58,13 @@ export function LoginPage() {
         <button type="submit" disabled={loading} className="primary-btn">
           {loading ? 'Validando...' : 'Entrar'}
         </button>
+
+        <p style={{ marginTop: '20px', textAlign: 'center', color: '#666' }}>
+          ¿No tienes cuenta?{' '}
+          <a href="/register" style={{ color: '#007bff', textDecoration: 'none' }}>
+            Regístrate aquí
+          </a>
+        </p>
       </form>
     </div>
   );

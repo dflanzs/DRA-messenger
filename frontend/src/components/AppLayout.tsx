@@ -8,6 +8,7 @@ const navItems = [
   { to: '/privados', label: 'Chats Privados' },
   { to: '/mensajes', label: 'Mensajes' },
   { to: '/circulos', label: 'Círculos de Confianza' },
+  { to: '/notificaciones', label: 'Notificaciones' },
 ];
 
 export function AppLayout() {
