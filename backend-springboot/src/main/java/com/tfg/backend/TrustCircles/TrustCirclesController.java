@@ -44,6 +44,15 @@ public class TrustCirclesController {
         return ResponseEntity.ok(trustCirclesService.getById(id));
     }
 
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        TrustCircles circle = trustCirclesService.getById(id);
+        circle.setDeletedAt(java.time.LocalDateTime.now());
+        trustCirclesService.save(circle);
+        return ResponseEntity.noContent().build();
+    }
+
     @PreAuthorize("@authorizationService.isSelfOrAdmin(authentication, #userId)")
     @GetMapping("/users/{userId}")
     public List<TrustCircles> getUserCircles(@PathVariable Long userId, Principal principal) {
