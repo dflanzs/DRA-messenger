@@ -1,7 +1,6 @@
 package com.tfg.backend.Auth;
 
 import com.tfg.backend.Auth.dto.LoginDto;
-import com.tfg.backend.Auth.dto.RegisterDto;
 import com.tfg.backend.Auth.dto.RegisterRequestDto;
 import com.tfg.backend.Enums.UserRole;
 import com.tfg.backend.Notifications.NotificationService;
