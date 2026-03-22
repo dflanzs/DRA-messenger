@@ -2,6 +2,7 @@ package com.tfg.backend.Auth;
 
 import com.tfg.backend.Auth.dto.LoginDto;
 import com.tfg.backend.Auth.dto.RegisterDto;
+import com.tfg.backend.Enums.UserRole;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserRepository;
 import com.tfg.backend.User.UserService;
@@ -49,6 +50,7 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(registerDto.getPassword()));
         user.setPublicKey(UUID.randomUUID().toString());
         user.setOnlineStatus(false);
+        user.setRole(userRepository.findAllByDeletedAtIsNull().isEmpty() ? UserRole.ADMIN : UserRole.USER);
 
         return userRepository.save(user);
     }
