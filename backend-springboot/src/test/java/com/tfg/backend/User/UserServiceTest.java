@@ -1,13 +1,17 @@
 package com.tfg.backend.User;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 class UserServiceTest {
 
-    private final UserService userService = new UserService();
+    private final UserRepository userRepository = mock(UserRepository.class);
+    private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
+    private final UserService userService = new UserService(userRepository, passwordEncoder);
 
     @Test
     void validatePassword_returnsTrue_whenPasswordMeetsPolicy() {
