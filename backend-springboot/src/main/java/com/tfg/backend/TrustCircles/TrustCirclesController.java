@@ -47,9 +47,7 @@ public class TrustCirclesController {
     @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        TrustCircles circle = trustCirclesService.getById(id);
-        circle.setDeletedAt(java.time.LocalDateTime.now());
-        trustCirclesService.save(circle);
+        trustCirclesService.softDeleteCircle(id);
         return ResponseEntity.noContent().build();
     }
 
