@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../api/client';
 
 interface Notification {
   id: number;
@@ -35,12 +35,7 @@ export default function NotificationsPage() {
 
   const loadNotifications = async () => {
     try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/notifications`,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        }
-      );
+      const response = await api.get('/api/notifications');
       setNotifications(response.data);
     } catch (err) {
       console.error('Error cargando notificaciones:', err);
@@ -49,12 +44,7 @@ export default function NotificationsPage() {
 
   const loadPendingUsers = async () => {
     try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/users`,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        }
-      );
+      const response = await api.get('/api/users');
       // Filtrar usuarios que verificaron email pero no fueron aprobados
       const pending = response.data.filter((u: User) => u.emailVerified && !u.adminApproved);
       setPendingUsers(pending);
@@ -67,13 +57,7 @@ export default function NotificationsPage() {
 
   const handleApproveUser = async (userId: number) => {
     try {
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/auth/users/${userId}/approve`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        }
-      );
+      await api.post(`/api/auth/users/${userId}/approve`, {});
       loadPendingUsers();
       setSelectedNotification(null);
     } catch (err: any) {
@@ -88,13 +72,7 @@ export default function NotificationsPage() {
     }
     
     try {
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/auth/users/${userId}/reject`,
-        { reason: actionReason },
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        }
-      );
+      await api.post(`/api/auth/users/${userId}/reject`, { reason: actionReason });
       loadPendingUsers();
       setSelectedNotification(null);
       setActionReason('');
@@ -105,13 +83,7 @@ export default function NotificationsPage() {
 
   const markAsRead = async (notificationId: number) => {
     try {
-      const response = await axios.put(
-        `${import.meta.env.VITE_API_URL}/notifications/${notificationId}/read`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        }
-      );
+      const response = await api.put(`/api/notifications/${notificationId}/read`, {});
       setNotifications(prev => 
         prev.map(n => n.id === notificationId ? response.data : n)
       );
@@ -122,12 +94,7 @@ export default function NotificationsPage() {
 
   const deleteNotification = async (notificationId: number) => {
     try {
-      await axios.delete(
-        `${import.meta.env.VITE_API_URL}/notifications/${notificationId}`,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        }
-      );
+      await api.delete(`/api/notifications/${notificationId}`);
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
     } catch (err) {
       console.error('Error eliminando notificación:', err);
