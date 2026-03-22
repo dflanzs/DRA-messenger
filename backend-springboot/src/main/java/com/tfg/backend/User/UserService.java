@@ -1,5 +1,6 @@
 package com.tfg.backend.User;
 
+import com.tfg.backend.Enums.UserRole;
 import com.tfg.backend.User.dto.CreateUserDto;
 import com.tfg.backend.User.dto.UpdateUserDto;
 import java.time.LocalDateTime;
@@ -118,6 +119,36 @@ public class UserService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
 
         user.setOnlineStatus(onlineStatus);
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User setOnlineStatusByEmail(String email, boolean onlineStatus) {
+        if (email == null || email.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email inválido");
+        }
+
+        User user = userRepository.findByEmailAndDeletedAtIsNull(email)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        user.setOnlineStatus(onlineStatus);
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User updateRole(Long id, UserRole role) {
+        if (id == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Id inválido");
+        }
+
+        if (role == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rol inválido");
+        }
+
+        User user = userRepository.findByIdAndDeletedAtIsNull(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        user.setRole(role);
         return userRepository.save(user);
     }
 
