@@ -48,3 +48,11 @@ backend-springboot/src/main/resources/application-prod.yml
 
 # macOS
 backend-springboot/.DS_Store
+
+# Frontend
+node_modules/
+dist/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+
