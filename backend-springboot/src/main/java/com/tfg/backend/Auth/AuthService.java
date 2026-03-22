@@ -67,12 +67,7 @@ public class AuthService {
 
             // Obtener el usuario autenticado (solo si no está eliminado)
             String email = authentication.getName();
-            User user = userRepository.findByEmailAndDeletedAtIsNull(email)
-                .orElseThrow(() -> new BadCredentialsException("User not found"));
-
-            // Actualizar estado online
-            user.setOnlineStatus(true);
-            return userRepository.save(user);
+            return userService.setOnlineStatusByEmail(email, true);
 
         } catch (BadCredentialsException e) {
             throw new BadCredentialsException("Invalid email or password");
@@ -80,10 +75,6 @@ public class AuthService {
     }
 
     public void logout(Long userId) {
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        
-        user.setOnlineStatus(false);
-        userRepository.save(user);
+        userService.setOnlineStatus(userId, false);
     }
 }
