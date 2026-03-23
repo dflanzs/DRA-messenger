@@ -20,7 +20,7 @@ services:
 
   backend:
     build:
-      context: ./backend-springboot
+      context: ./
       dockerfile: Dockerfile
     environment:
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
