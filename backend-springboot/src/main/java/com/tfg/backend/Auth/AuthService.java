@@ -73,6 +73,9 @@ public class AuthService {
         user.setAdminApproved(false);
         user.setRole(UserRole.USER);
 
+        // Persistir usuario pendiente de verificacion para poder activarlo con el token
+        userRepository.save(user);
+
         // Generar token de verificación
         String verificationToken = UUID.randomUUID().toString();
         EmailVerificationToken token = new EmailVerificationToken(
