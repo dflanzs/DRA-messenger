@@ -24,6 +24,9 @@ hs_err_pid*
 replay_pid*
 
 .env
+backend-springboot/.env
+frontend/.env
+frontend/.env.*
 
 # Eclipse
 backend-springboot/.settings/
