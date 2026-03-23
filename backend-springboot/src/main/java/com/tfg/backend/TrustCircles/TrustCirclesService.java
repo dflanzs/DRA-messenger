@@ -85,6 +85,13 @@ public class TrustCirclesService {
 	}
 
 	@Transactional
+	public void softDeleteCircle(Long id) {
+		TrustCircles circle = getById(id);
+		circle.setDeletedAt(java.time.LocalDateTime.now());
+		trustCirclesRepository.save(circle);
+	}
+
+	@Transactional
 	public TrustCircles grantCrossCircleConsent(Long userId1, Long userId2) {
 		if (userId1 == null || userId2 == null || userId1.equals(userId2)) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Consentimiento cruzado inválido");

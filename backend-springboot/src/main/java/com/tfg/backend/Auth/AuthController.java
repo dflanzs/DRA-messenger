@@ -2,15 +2,20 @@ package com.tfg.backend.Auth;
 
 import com.tfg.backend.Auth.dto.AuthResponseDto;
 import com.tfg.backend.Auth.dto.LoginDto;
-import com.tfg.backend.Auth.dto.RegisterDto;
+import com.tfg.backend.Auth.dto.RegisterRequestDto;
+import com.tfg.backend.Auth.dto.VerifyEmailDto;
 import com.tfg.backend.Security.JwtUtil;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.dto.UserResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -27,14 +32,28 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterDto registerDto) {
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequestDto registerDto) {
         try {
-            User user = authService.register(registerDto);
-            String token = jwtUtil.generateToken(user);
-            AuthResponseDto response = new AuthResponseDto(token, UserResponseDto.fromUser(user));
-            return ResponseEntity.ok(response);
+            String message = authService.register(registerDto);
+            return ResponseEntity.ok(Map.of("message", message));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<?> verifyEmail(@Valid @RequestBody VerifyEmailDto verifyEmailDto) {
+        try {
+            User user = authService.verifyEmail(verifyEmailDto.getToken());
+            return ResponseEntity.ok(Map.of(
+                "message", "Email verificado correctamente. Tu cuenta está pendiente de aprobación del administrador.",
+                "user", UserResponseDto.fromUser(user)
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -67,4 +86,31 @@ public class AuthController {
         }
         return ResponseEntity.ok().build();
     }
+
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
+    @PostMapping("/users/{userId}/approve")
+    public ResponseEntity<?> approveUser(@PathVariable Long userId) {
+        try {
+            User user = authService.approveUser(userId);
+            return ResponseEntity.ok(Map.of(
+                "message", "Usuario aprobado exitosamente",
+                "user", UserResponseDto.fromUser(user)
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
+    @PostMapping("/users/{userId}/reject")
+    public ResponseEntity<?> rejectUser(@PathVariable Long userId, @RequestBody Map<String, String> body) {
+        try {
+            String reason = body.getOrDefault("reason", null);
+            authService.rejectUser(userId, reason);
+            return ResponseEntity.ok(Map.of("message", "Usuario rechazado exitosamente"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 }
+

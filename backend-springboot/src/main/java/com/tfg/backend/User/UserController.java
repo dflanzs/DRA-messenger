@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tfg.backend.User.dto.UpdateUserDto;
+import com.tfg.backend.User.dto.UpdateUserRoleDto;
 
 @RestController
 @RequestMapping("/api/users")
@@ -23,7 +24,7 @@ public class UserController {
         this.userService = userService;
     }
 
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @GetMapping
     public List<User> list() {
         return userService.list();
@@ -54,5 +55,12 @@ public class UserController {
     public ResponseEntity<User> setOnlineStatus(@PathVariable Long id,
                                                 @RequestBody boolean onlineStatus) {
         return ResponseEntity.ok(userService.setOnlineStatus(id, onlineStatus));
+    }
+
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
+    @PutMapping("/{id}/role")
+    public ResponseEntity<User> updateRole(@PathVariable Long id,
+                                           @RequestBody UpdateUserRoleDto updateUserRoleDto) {
+        return ResponseEntity.ok(userService.updateRole(id, updateUserRoleDto.getRole()));
     }
 }

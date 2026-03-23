@@ -51,6 +51,12 @@ public class User {
 
 	private boolean onlineStatus;
 
+	@Column(nullable = false, columnDefinition = "boolean default false")
+	private boolean emailVerified = false;
+
+	@Column(nullable = false, columnDefinition = "boolean default false")
+	private boolean adminApproved = false;
+
 	@Transient
 	private WebSocketSession socketSession;
 
@@ -107,12 +113,32 @@ public class User {
 		return role;
 	}
 	
+	public void setRole(UserRole role) {
+		this.role = role;
+	}
+	
 	public boolean isOnlineStatus() {
 		return onlineStatus;
 	}
 
 	public void setOnlineStatus(boolean onlineStatus) {
 		this.onlineStatus = onlineStatus;
+	}
+
+	public boolean isEmailVerified() {
+		return emailVerified;
+	}
+
+	public void setEmailVerified(boolean emailVerified) {
+		this.emailVerified = emailVerified;
+	}
+
+	public boolean isAdminApproved() {
+		return adminApproved;
+	}
+
+	public void setAdminApproved(boolean adminApproved) {
+		this.adminApproved = adminApproved;
 	}
 
 	public WebSocketSession getSocketSession() {
