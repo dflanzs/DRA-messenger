@@ -4,8 +4,6 @@ import com.tfg.backend.Security.CustomUserDetailsService;
 import com.tfg.backend.Security.JwtUtil;
 import com.tfg.backend.Security.TokenBlacklistService;
 
-import org.springframework.messaging.MessagingException;
-
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -34,27 +32,42 @@ public class JwtAuthenticationChannelInterceptor implements ChannelInterceptor {
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor =
-            MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
+        MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
         if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
             String authHeader = accessor.getFirstNativeHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                try {
-                    String email = jwtUtil.extractEmail(token);
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-                    if (jwtUtil.validateToken(token, email) && !tokenBlacklistService.isBlacklisted(token)) {
-                        UsernamePasswordAuthenticationToken auth =
-                            new UsernamePasswordAuthenticationToken(
-                                userDetails, null, userDetails.getAuthorities());
-                        accessor.setUser(auth);
-                    }
-                } catch (Exception ex) {
-                    throw new MessagingException("WebSocket authentication failed: " + ex);
+
+            if (authHeader == null) {
+                throw new WebSocketAuthException("Missing Authorization header", "MISSING_AUTH_HEADER");
+            }
+
+            String token = authHeader.substring(7);
+
+            try {
+                String email = jwtUtil.extractEmail(token);
+                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+
+                boolean blacklisted = tokenBlacklistService.isBlacklisted(token);
+                boolean valid = jwtUtil.validateToken(token, email);
+
+                if (valid && !blacklisted) {
+                    UsernamePasswordAuthenticationToken auth =
+                    new UsernamePasswordAuthenticationToken(
+                        userDetails, null, userDetails.getAuthorities());
+                    accessor.setUser(auth);
                 }
+                else if (blacklisted) {
+                    throw new WebSocketAuthException("Token has been blacklisted", "TOKEN_BLACKLISTED");
+                }
+                else if (!valid) {
+                    throw new WebSocketAuthException("Invalid JWT token", "INVALID_TOKEN");
+                }
+            } catch (WebSocketAuthException ex) {
+                throw ex;
+            } catch (Exception ex) {
+                throw new WebSocketAuthException("WebSocket authentication failed", "AUTH_INTERNAL_ERROR", ex);
             }
         }
-
         return message;
     }
 }
