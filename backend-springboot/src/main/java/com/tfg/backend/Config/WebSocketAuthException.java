@@ -10,7 +10,7 @@ public class WebSocketAuthException extends RuntimeException {
 
 
     public WebSocketAuthException(String message, String code, Throwable cause) {
-        super(message);
+        super(message, cause);
         this.code = code;
     }
 
