@@ -3,6 +3,9 @@ package com.tfg.backend.Config;
 import com.tfg.backend.Security.CustomUserDetailsService;
 import com.tfg.backend.Security.JwtUtil;
 import com.tfg.backend.Security.TokenBlacklistService;
+
+import org.springframework.messaging.MessagingException;
+
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -47,7 +50,7 @@ public class JwtAuthenticationChannelInterceptor implements ChannelInterceptor {
                         accessor.setUser(auth);
                     }
                 } catch (Exception ignored) {
-                    // invalid token — connection proceeds unauthenticated
+                    throw new MessagingException("WebSocket authentication failed: " + ignored);
                 }
             }
         }
