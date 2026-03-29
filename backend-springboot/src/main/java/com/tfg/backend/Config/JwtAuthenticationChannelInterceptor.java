@@ -49,8 +49,8 @@ public class JwtAuthenticationChannelInterceptor implements ChannelInterceptor {
                                 userDetails, null, userDetails.getAuthorities());
                         accessor.setUser(auth);
                     }
-                } catch (Exception ignored) {
-                    throw new MessagingException("WebSocket authentication failed: " + ignored);
+                } catch (Exception ex) {
+                    throw new MessagingException("WebSocket authentication failed: " + ex);
                 }
             }
         }
