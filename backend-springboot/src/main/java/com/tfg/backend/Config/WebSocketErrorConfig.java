@@ -20,7 +20,7 @@ public class WebSocketErrorConfig {
             // Custom error message for websocket errors
             @Override
             public Message<byte[]> handleClientMessageProcessingError(Message<byte[]> clientMessage, Throwable ex) {
-                Throwable cause = ex.getCause();
+                Throwable cause = getRootCause(ex);
 
                 String code = "WS_ERROR";
                 String message = "An error occurred while processing the message.";
@@ -39,6 +39,14 @@ public class WebSocketErrorConfig {
 
                 MessageHeaders headers = headerAccessor.getMessageHeaders();
                 return MessageBuilder.createMessage(body.getBytes(), headers);
+            }
+
+            private Throwable getRootCause(Throwable ex) {
+                Throwable cause = ex;
+                while (cause.getCause() != null) {
+                    cause = cause.getCause();
+                }
+                return cause;
             }
         };
     }
