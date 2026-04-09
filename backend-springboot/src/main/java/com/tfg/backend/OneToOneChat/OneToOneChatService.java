@@ -68,6 +68,9 @@ public class OneToOneChatService {
         responseDTO.setTimestamp(savedMessage.getCreatedAt().format(formatter));
         responseDTO.setRead(false);
 
-        messagingTemplate.convertAndSendToUser(sender.getId().toString(), "/queue/messages", responseDTO);
+        User userReceiver = userRepository.findById(receiverUserId)
+            .orElseThrow(() -> new IllegalArgumentException("Usuario receptor no encontrado"));
+
+        messagingTemplate.convertAndSendToUser(userReceiver.getEmail(), "/queue/messages", responseDTO);
     }
 }
