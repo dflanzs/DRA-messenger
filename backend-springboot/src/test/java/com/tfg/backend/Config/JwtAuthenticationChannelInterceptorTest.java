@@ -86,6 +86,18 @@ class JwtAuthenticationChannelInterceptorTest {
     }
 
     @Test
+    void preSend_throwsInvalidAuthHeader_whenAuthorizationHeaderIsNotBearer() {
+        Message<byte[]> message = buildMessage(StompCommand.CONNECT, "Basic abc123");
+
+        WebSocketAuthException ex = assertThrows(
+            WebSocketAuthException.class,
+            () -> interceptor.preSend(message, messageChannel)
+        );
+
+        assertEquals("INVALID_AUTH_HEADER", ex.getCode());
+    }
+
+    @Test
     void preSend_throwsBlacklisted_whenTokenIsBlacklisted() {
         String token = "blacklisted-token";
         String email = "user@example.com";

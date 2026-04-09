@@ -14,13 +14,37 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class WebSocketErrorConfigTest {
 
     @Test
+    void handleClientMessageProcessingError_returnsAuthErrorPayload_whenExceptionIsDirectAuthException() {
+        WebSocketErrorConfig config = new WebSocketErrorConfig();
+        StompSubProtocolErrorHandler handler = config.stompSubProtocolErrorHandler();
+
+        WebSocketAuthException ex = new WebSocketAuthException(
+            "Invalid Authorization header format",
+            "INVALID_AUTH_HEADER"
+        );
+
+        Message<byte[]> result = handler.handleClientMessageProcessingError(null, ex);
+
+        String payload = new String(result.getPayload(), StandardCharsets.UTF_8);
+        assertEquals(
+            "{\"error\": {\"code\": \"INVALID_AUTH_HEADER\", \"message\": \"Invalid Authorization header format\"}}",
+            payload
+        );
+
+        StompHeaderAccessor accessor = StompHeaderAccessor.wrap(result);
+        assertEquals(StompCommand.ERROR, accessor.getCommand());
+        assertEquals("Invalid Authorization header format", accessor.getMessage());
+        assertEquals(MimeTypeUtils.APPLICATION_JSON, accessor.getContentType());
+    }
+
+    @Test
     void handleClientMessageProcessingError_returnsAuthErrorPayload_whenRootCauseIsAuthException() {
         WebSocketErrorConfig config = new WebSocketErrorConfig();
         StompSubProtocolErrorHandler handler = config.stompSubProtocolErrorHandler();
 
-        RuntimeException ex = new RuntimeException(
+        RuntimeException ex = new RuntimeException(new IllegalStateException(
             new WebSocketAuthException("Missing Authorization header", "MISSING_AUTH_HEADER")
-        );
+        ));
 
         Message<byte[]> result = handler.handleClientMessageProcessingError(null, ex);
 
