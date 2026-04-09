@@ -39,6 +39,8 @@ public class JwtAuthenticationChannelInterceptor implements ChannelInterceptor {
 
             if (authHeader == null) {
                 throw new WebSocketAuthException("Missing Authorization header", "MISSING_AUTH_HEADER");
+            } else if (!authHeader.startsWith("Bearer ")) {
+                throw new WebSocketAuthException("Invalid Authorization header format", "INVALID_AUTH_HEADER");
             }
 
             String token = authHeader.substring(7);
