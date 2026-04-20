@@ -24,6 +24,9 @@ hs_err_pid*
 replay_pid*
 
 .env
+backend-springboot/.env
+frontend/.env
+frontend/.env.*
 
 # Eclipse
 backend-springboot/.settings/
@@ -43,8 +46,15 @@ backend-springboot/target/
 backend-springboot/.gradle/
 
 # Configuration files with credentials
-backend-springboot/src/main/resources/application-local.yml
-backend-springboot/src/main/resources/application-prod.yml
+backend-springboot/src/main/resources/application.yml
 
 # macOS
 backend-springboot/.DS_Store
+
+# Frontend
+node_modules/
+dist/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+backend-springboot/target/classes/application.yml

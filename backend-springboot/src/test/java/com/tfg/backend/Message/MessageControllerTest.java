@@ -1,25 +1,23 @@
 package com.tfg.backend.Message;
 
 import com.tfg.backend.OneToOneChat.OneToOneChat;
-import com.tfg.backend.OneToOneChat.OneToOneChatRepository;
 import com.tfg.backend.Security.CustomUserDetailsService;
 import com.tfg.backend.Security.JwtAuthenticationFilter;
 import com.tfg.backend.User.User;
-import com.tfg.backend.User.UserRepository;
+import com.tfg.backend.User.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
-import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.doNothing;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -35,19 +33,16 @@ class MessageControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
-    private MessageRepository messageRepository;
+    @MockitoBean
+    private MessageService messageService;
 
-    @MockBean
-    private UserRepository userRepository;
+    @MockitoBean
+    private UserService userService;
 
-    @MockBean
-    private OneToOneChatRepository oneToOneChatRepository;
-
-    @MockBean
+    @MockitoBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    @MockBean
+    @MockitoBean
     private CustomUserDetailsService customUserDetailsService;
 
     @Test
@@ -56,7 +51,7 @@ class MessageControllerTest {
         User receiver = buildUser(2L, "receiver@example.com");
         Message message = buildMessage(10L, sender, receiver, "Hola");
 
-        when(messageRepository.findAll()).thenReturn(List.of(message));
+        when(messageService.list()).thenReturn(List.of(message));
 
         mockMvc.perform(get("/api/messages"))
                 .andExpect(status().isOk())
@@ -66,7 +61,7 @@ class MessageControllerTest {
 
     @Test
     void get_returnsNotFound_whenMessageDoesNotExist() throws Exception {
-        when(messageRepository.findById(99L)).thenReturn(Optional.empty());
+        when(messageService.getById(99L)).thenThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND));
 
         mockMvc.perform(get("/api/messages/99"))
                 .andExpect(status().isNotFound());
@@ -78,9 +73,7 @@ class MessageControllerTest {
         User receiver = buildUser(2L, "receiver@example.com");
         Message savedMessage = buildMessage(11L, sender, receiver, "Mensaje nuevo");
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(sender));
-        when(userRepository.findById(2L)).thenReturn(Optional.of(receiver));
-        when(messageRepository.save(any(Message.class))).thenReturn(savedMessage);
+        when(messageService.create(any())).thenReturn(savedMessage);
 
         String body = """
                 {
@@ -100,7 +93,7 @@ class MessageControllerTest {
 
     @Test
     void create_returnsBadRequest_whenSenderDoesNotExist() throws Exception {
-        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+        when(messageService.create(any())).thenThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST));
 
         String body = """
                 {
@@ -120,11 +113,9 @@ class MessageControllerTest {
     void update_returnsOk_whenMessageExists() throws Exception {
         User sender = buildUser(1L, "sender@example.com");
         User receiver = buildUser(2L, "receiver@example.com");
-        Message message = buildMessage(12L, sender, receiver, "Anterior");
         Message savedMessage = buildMessage(12L, sender, receiver, "Actualizado");
 
-        when(messageRepository.findById(12L)).thenReturn(Optional.of(message));
-        when(messageRepository.save(any(Message.class))).thenReturn(savedMessage);
+        when(messageService.update(any(), any())).thenReturn(savedMessage);
 
         String body = """
                 {
@@ -141,42 +132,24 @@ class MessageControllerTest {
 
     @Test
     void delete_returnsNoContent_whenMessageExists() throws Exception {
-        when(messageRepository.existsById(13L)).thenReturn(true);
-        doNothing().when(messageRepository).deleteById(13L);
+        org.mockito.Mockito.doNothing().when(messageService).delete(13L);
 
         mockMvc.perform(delete("/api/messages/13"))
                 .andExpect(status().isNoContent());
     }
 
     @Test
-    void getConversation_returnsMessages_whenChatExists() throws Exception {
-        User user1 = buildUser(1L, "user1@example.com");
-        User user2 = buildUser(2L, "user2@example.com");
-        OneToOneChat chat = new OneToOneChat(user1, user2);
-        setChatId(chat, 20L);
-        Message message = buildMessage(14L, user1, user2, "Conversacion");
-
-        when(oneToOneChatRepository.findChatBetweenUsers(1L, 2L)).thenReturn(Optional.of(chat));
-        when(messageRepository.findByChatId(20L)).thenReturn(List.of(message));
-
-        mockMvc.perform(get("/api/messages/conversation/1/2"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(14L))
-                .andExpect(jsonPath("$[0].content").value("Conversacion"));
-    }
-
-    @Test
+    @WithMockUser(username = "receiver@example.com")
     void getUnreadMessages_returnsUnreadMessages_forUserChats() throws Exception {
         User sender = buildUser(2L, "sender@example.com");
         User receiver = buildUser(1L, "receiver@example.com");
-        OneToOneChat chat = new OneToOneChat(receiver, sender);
         Message unreadMessage = buildMessage(15L, sender, receiver, "No leido");
 
-        when(oneToOneChatRepository.findChatsForUser(1L)).thenReturn(List.of(chat));
-        when(messageRepository.findUnreadMessagesInChats(anyList(), any(Long.class)))
-                .thenReturn(List.of(unreadMessage));
+        when(userService.getByEmail(anyString())).thenReturn(receiver);
+        when(messageService.getUnreadMessages(1L)).thenReturn(List.of(unreadMessage));
 
-        mockMvc.perform(get("/api/messages/unread/1"))
+        mockMvc.perform(get("/api/messages/unread")
+                .principal(() -> "receiver@example.com"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(15L))
                 .andExpect(jsonPath("$[0].content").value("No leido"));
@@ -186,12 +159,10 @@ class MessageControllerTest {
     void markAsRead_returnsOk_whenMessageExists() throws Exception {
         User sender = buildUser(1L, "sender@example.com");
         User receiver = buildUser(2L, "receiver@example.com");
-        Message message = buildMessage(16L, sender, receiver, "Pendiente");
         Message savedMessage = buildMessage(16L, sender, receiver, "Pendiente");
         savedMessage.setRead(true);
 
-        when(messageRepository.findById(16L)).thenReturn(Optional.of(message));
-        when(messageRepository.save(any(Message.class))).thenReturn(savedMessage);
+        when(messageService.markAsRead(16L)).thenReturn(savedMessage);
 
         mockMvc.perform(put("/api/messages/16/read"))
                 .andExpect(status().isOk())
@@ -215,9 +186,4 @@ class MessageControllerTest {
         return message;
     }
 
-    private void setChatId(OneToOneChat chat, Long id) throws Exception {
-        java.lang.reflect.Field field = OneToOneChat.class.getDeclaredField("id");
-        field.setAccessible(true);
-        field.set(chat, id);
-    }
 }

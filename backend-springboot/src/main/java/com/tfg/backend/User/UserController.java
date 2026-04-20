@@ -1,134 +1,66 @@
 package com.tfg.backend.User;
 
 import jakarta.validation.Valid;
-import java.net.URI;
 import java.util.List;
-import java.util.Optional;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.tfg.backend.User.dto.CreateUserDto;
 import com.tfg.backend.User.dto.UpdateUserDto;
+import com.tfg.backend.User.dto.UpdateUserRoleDto;
 
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
-    private final UserRepository repository;
     private final UserService userService;
 
-    public UserController(UserRepository repository, UserService userService) {
-        this.repository = repository;
+    public UserController(UserService userService) {
         this.userService = userService;
     }
 
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @GetMapping
     public List<User> list() {
-        return repository.findAllByDeletedAtIsNull();
+        return userService.list();
     }
 
+    @PreAuthorize("@authorizationService.isSelfOrAdmin(authentication, #id)")
     @GetMapping("/{id}")
     public ResponseEntity<User> get(@PathVariable Long id) {
-        if (id == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        Optional<User> user = repository.findByIdAndDeletedAtIsNull(id);
-        return user.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        return ResponseEntity.ok(userService.getById(id));
     }
 
-    @PostMapping
-    public ResponseEntity<User> create(@Valid @RequestBody CreateUserDto createUserDto) {
-        if (!userService.validatePassword(createUserDto.getPassword())) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        User user = new User();
-        user.setName(createUserDto.getName());
-        user.setEmail(createUserDto.getEmail());
-        user.setPassword(createUserDto.getPassword());
-        user.setOnlineStatus(false);
-        User newUser = repository.save(user);
-
-        URI location = URI.create("/api/users/" + newUser.getId());
-
-        return ResponseEntity.created(location).body(newUser);
-    }
-
+    @PreAuthorize("@authorizationService.isSelfOrAdmin(authentication, #id)")
     @PutMapping("/{id}")
-    public ResponseEntity<User> update(@PathVariable Long id, @Valid @RequestBody UpdateUserDto updateUserDto) {
-        if (id == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        if (!repository.existsByIdAndDeletedAtIsNull(id)) {
-            return ResponseEntity.notFound().build();
-        }
-
-        User user = new User();
-        switch (updateUserDto.getMode()) {
-            case UpdateUserDto.MODE_NAME:
-                user.setName(updateUserDto.getUpdatedValue());
-                break;
-            case UpdateUserDto.MODE_EMAIL:
-                user.setEmail(updateUserDto.getUpdatedValue());
-                break;
-            case UpdateUserDto.MODE_PASSWORD:
-                    if (!userService.validatePassword(updateUserDto.getUpdatedValue())) {
-                        return ResponseEntity.badRequest().build();
-                    }
-                    user.setPassword(updateUserDto.getUpdatedValue());
-                break;
-            default:
-                throw new IllegalArgumentException("Invalid mode: " + updateUserDto.getMode());
-        }
-
-        user.setId(id);
-        return ResponseEntity.ok(repository.save(user));
+    public ResponseEntity<User> update(@PathVariable Long id,
+                                       @Valid @RequestBody UpdateUserDto updateUserDto) {
+        return ResponseEntity.ok(userService.update(id, updateUserDto));
     }
 
+    @PreAuthorize("@authorizationService.isSelfOrAdmin(authentication, #id)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        if (id == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        Optional<User> optionalUser = repository.findByIdAndDeletedAtIsNull(id);
-        if (optionalUser.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        // Soft delete: marcar usuario como eliminado
-        User user = optionalUser.get();
-        user.setDeletedAt(java.time.LocalDateTime.now());
-        repository.save(user);
-        
+        userService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("@authorizationService.isSelf(authentication, #id)")
     @PutMapping("/{id}/online-status")
-    public ResponseEntity<User> setOnlineStatus(@PathVariable Long id, @RequestBody boolean onlineStatus) {
-        if (id == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        Optional<User> optionalUser = repository.findByIdAndDeletedAtIsNull(id);
-        if (optionalUser.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        User user = optionalUser.get();
-        user.setOnlineStatus(onlineStatus);
-        User updatedUser = repository.save(user);
-        
-        return ResponseEntity.ok(updatedUser);
+    public ResponseEntity<User> setOnlineStatus(@PathVariable Long id,
+                                                @RequestBody boolean onlineStatus) {
+        return ResponseEntity.ok(userService.setOnlineStatus(id, onlineStatus));
     }
 
-    
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
+    @PutMapping("/{id}/role")
+    public ResponseEntity<User> updateRole(@PathVariable Long id,
+                                           @RequestBody UpdateUserRoleDto updateUserRoleDto) {
+        return ResponseEntity.ok(userService.updateRole(id, updateUserRoleDto.getRole()));
+    }
 }

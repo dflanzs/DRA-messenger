@@ -1,9 +1,8 @@
 package com.tfg.backend.Message;
 
 import jakarta.validation.Valid;
+import java.security.Principal;
 import java.util.List;
-import java.util.Optional;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -14,45 +13,40 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.tfg.backend.Message.dto.SendMessageDTO;
-import com.tfg.backend.OneToOneChat.OneToOneChat;
-import com.tfg.backend.OneToOneChat.OneToOneChatRepository;
-import com.tfg.backend.User.User;
-import com.tfg.backend.User.UserRepository;
+import com.tfg.backend.User.UserService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/messages")
 public class MessageController {
 
-    @Autowired
-    private MessageRepository messageRepository;
+    private final MessageService messageService;
+    private final UserService userService;
 
-    @Autowired
-    private UserRepository userRepository;
-    
-    @Autowired
-    private OneToOneChatRepository oneToOneChatRepository;
+    public MessageController(MessageService messageService, UserService userService) {
+        this.messageService = messageService;
+        this.userService = userService;
+    }
 
     /**
      * Obtener todos los mensajes
      */
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @GetMapping
     public List<Message> list() {
-        return messageRepository.findAll();
+        return messageService.list();
     }
 
     /**
      * Obtener un mensaje por ID
      */
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<Message> get(@PathVariable Long id) {
-        if (id == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        Optional<Message> message = messageRepository.findById(id);
-        return message.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        return ResponseEntity.ok(messageService.getById(id));
     }
 
     /**
@@ -60,18 +54,7 @@ public class MessageController {
      */
     @PostMapping
     public ResponseEntity<Message> create(@Valid @RequestBody SendMessageDTO messageDTO) {
-        Optional<User> senderOpt = userRepository.findById(messageDTO.getSenderId());
-        
-        if (senderOpt.isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
-        
-        Optional<User> receiver = userRepository.findById(messageDTO.getOneToOneChatId());
-        OneToOneChat chat = new OneToOneChat(senderOpt.get(), receiver.get());
-        Message message = new Message(senderOpt.get(), messageDTO.getContent(), chat);
-        Message savedMessage = messageRepository.save(message);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedMessage);
+        return ResponseEntity.status(HttpStatus.CREATED).body(messageService.create(messageDTO));
     }
 
     /**
@@ -79,72 +62,30 @@ public class MessageController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<Message> update(@PathVariable Long id, @Valid @RequestBody SendMessageDTO messageDTO) {
-        if (id == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        Optional<Message> optionalMessage = messageRepository.findById(id);
-        if (optionalMessage.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        Message message = optionalMessage.get();
-        message.setContent(messageDTO.getContent());
-
-        return ResponseEntity.ok(messageRepository.save(message));
+        return ResponseEntity.ok(messageService.update(id, messageDTO));
     }
 
     /**
      * Eliminar un mensaje
      */
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        if (id == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        if (!messageRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
-
-        messageRepository.deleteById(id);
+        messageService.delete(id);
         return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * Obtener la conversación entre dos usuarios
-     */
-    @GetMapping("/conversation/{userId1}/{userId2}")
-    public ResponseEntity<List<Message>> getConversation(@PathVariable Long userId1, @PathVariable Long userId2) {
-        if (userId1 == null || userId2 == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        // Find the chat between the two users
-        var chatOpt = oneToOneChatRepository.findChatBetweenUsers(userId1, userId2);
-        if (chatOpt.isEmpty()) {
-            return ResponseEntity.ok(List.of()); // No chat exists yet
-        }
-        
-        List<Message> conversation = messageRepository.findByChatId(chatOpt.get().getId());
-        return ResponseEntity.ok(conversation);
     }
 
     /**
      * Obtener mensajes no leídos de un usuario
      */
-    @GetMapping("/unread/{userId}")
-    public ResponseEntity<List<Message>> getUnreadMessages(@PathVariable Long userId) {
-        if (userId == null) {
-            return ResponseEntity.badRequest().build();
+    @GetMapping("/unread")
+    public ResponseEntity<List<Message>> getUnreadMessages(Principal principal) {
+        if (principal == null) {
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED,
+                "Usuario no autenticado");
         }
-
-        // Find all chats where the user is involved
-        List<com.tfg.backend.OneToOneChat.OneToOneChat> userChats = oneToOneChatRepository.findChatsForUser(userId);
-        
-        // Find unread messages in those chats where the sender is not the user
-        List<Message> unreadMessages = messageRepository.findUnreadMessagesInChats(userChats, userId);
-        return ResponseEntity.ok(unreadMessages);
+        Long userId = userService.getByEmail(principal.getName()).getId();
+        return ResponseEntity.ok(messageService.getUnreadMessages(userId));
     }
 
     /**
@@ -152,18 +93,6 @@ public class MessageController {
      */
     @PutMapping("/{id}/read")
     public ResponseEntity<Message> markAsRead(@PathVariable Long id) {
-        if (id == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        Optional<Message> optionalMessage = messageRepository.findById(id);
-        if (optionalMessage.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        Message message = optionalMessage.get();
-        message.setRead(true);
-
-        return ResponseEntity.ok(messageRepository.save(message));
+        return ResponseEntity.ok(messageService.markAsRead(id));
     }
 }

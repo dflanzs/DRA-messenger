@@ -1,68 +1,57 @@
 package com.tfg.backend.GroupChat;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.tfg.backend.Message.dto.SendMessageDTO;
+import java.util.List;
+import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
-import com.tfg.backend.User.User;
-import com.tfg.backend.User.UserRepository;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Optional;
-
-import com.tfg.backend.Message.*;
-import com.tfg.backend.Message.dto.SendMessageDTO;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
+@RequestMapping("/api/group-chats")
 public class GroupChatController {
 
-    @Autowired
-    private MessageRepository messageRepository;
+    private final GroupChatService groupChatService;
+    private final GroupChatRepository groupChatRepository;
 
-    @Autowired
-    private GroupChatRepository groupChatRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private SimpMessagingTemplate messagingTemplate;
-
-    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+    public GroupChatController(GroupChatService groupChatService,
+                               GroupChatRepository groupChatRepository) {
+        this.groupChatService = groupChatService;
+        this.groupChatRepository = groupChatRepository;
+    }
 
     /**
      * Envía un mensaje a un grupo
      * Cliente: stompClient.send("/app/group-message", {}, JSON.stringify({senderId, groupChatId, content}))
      */
     @MessageMapping("/group-message")
-    public void sendGroupMessage(@Payload SendMessageDTO messageDTO) {
-        Optional<User> senderOpt = userRepository.findById(messageDTO.getSenderId());
-        Optional<GroupChat> chatOpt = groupChatRepository.findById(messageDTO.getGroupChatId());
+    public void sendGroupMessage(@Payload SendMessageDTO messageDTO,
+                                 SimpMessageHeaderAccessor headerAccessor) {
+        groupChatService.sendGroupMessage(messageDTO, headerAccessor.getUser());
+    }
 
-        if (senderOpt.isPresent() && chatOpt.isPresent()) {
-            User sender = senderOpt.get();
-            GroupChat chat = chatOpt.get();
+    @ResponseBody
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
+    @GetMapping
+    public List<GroupChat> list() {
+        return groupChatRepository.findAll();
+    }
 
-            // Guardar el mensaje en la BD
-            Message message = new Message(sender, messageDTO.getContent(), chat);
-            message.setCreatedAt(LocalDateTime.now());
-            Message savedMessage = messageRepository.save(message);
-
-            // Preparar DTO para enviar al cliente
-            SendMessageDTO responseDTO = new SendMessageDTO();
-            responseDTO.setId(savedMessage.getId());
-            responseDTO.setSenderId(sender.getId());
-            responseDTO.setContent(savedMessage.getContent());
-            responseDTO.setTimestamp(savedMessage.getCreatedAt().format(formatter));
-            responseDTO.setRead(false);
-
-            // Enviar también al sender para confirmación
-            messagingTemplate.convertAndSendToUser(
-                sender.getId().toString(),
-                "/queue/messages",
-                responseDTO
-            );
+    @ResponseBody
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        if (!groupChatRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
         }
+        groupChatRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 }
