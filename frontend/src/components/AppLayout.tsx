@@ -4,9 +4,6 @@ import { useAuth } from '../context/AuthContext';
 const navItems = [
   { to: '/', label: 'Dashboard' },
   { to: '/usuarios', label: 'Usuarios' },
-  { to: '/grupos', label: 'Chats de Grupo' },
-  { to: '/privados', label: 'Chats Privados' },
-  { to: '/mensajes', label: 'Mensajes' },
   { to: '/circulos', label: 'Círculos de Confianza' },
   { to: '/notificaciones', label: 'Notificaciones' },
 ];

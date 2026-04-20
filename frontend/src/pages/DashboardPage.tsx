@@ -39,9 +39,6 @@ export function DashboardPage() {
       <div className="stats-grid">
         <article className="stat-card"><h4>Usuarios activos</h4><strong>{stats.onlineUsers}</strong></article>
         <article className="stat-card"><h4>Usuarios totales</h4><strong>{stats.totalUsers}</strong></article>
-        <article className="stat-card"><h4>Mensajes</h4><strong>{stats.totalMessages}</strong></article>
-        <article className="stat-card"><h4>Chats de grupo</h4><strong>{stats.totalGroupChats}</strong></article>
-        <article className="stat-card"><h4>Chats privados</h4><strong>{stats.totalPrivateChats}</strong></article>
         <article className="stat-card"><h4>Círculos de confianza</h4><strong>{stats.totalTrustCircles}</strong></article>
       </div>
     </div>

@@ -2,10 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './components/AppLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { DashboardPage } from './pages/DashboardPage';
-import { GroupChatsPage } from './pages/GroupChatsPage';
 import { LoginPage } from './pages/LoginPage';
-import { MessagesPage } from './pages/MessagesPage';
-import { PrivateChatsPage } from './pages/PrivateChatsPage';
 import { TrustCirclesPage } from './pages/TrustCirclesPage';
 import { UsersPage } from './pages/UsersPage';
 import RegisterPage from './pages/RegisterPage';
@@ -23,9 +20,6 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/usuarios" element={<UsersPage />} />
-          <Route path="/grupos" element={<GroupChatsPage />} />
-          <Route path="/privados" element={<PrivateChatsPage />} />
-          <Route path="/mensajes" element={<MessagesPage />} />
           <Route path="/circulos" element={<TrustCirclesPage />} />
           <Route path="/notificaciones" element={<NotificationsPage />} />
         </Route>
