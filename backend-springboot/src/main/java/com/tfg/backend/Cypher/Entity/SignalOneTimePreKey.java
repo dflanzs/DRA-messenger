@@ -12,6 +12,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
@@ -20,61 +21,55 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 /*
- * Save user's signed pre-keys history and mark which one is active. 
+ * Store one-time pre-keys that are consumed upon delivering PreKeyBundle to receivers.
  */
 
 @Entity
 @Table(
-    name = "signal_kyber_pre_keys",
+    name = "signal_one_time_pre_keys",
     uniqueConstraints = {
-        @UniqueConstraint(name = "uk_signal_kyber_pre_keys_user_prekey", columnNames = {"user_id", "kyber_pre_key_id"})
+        @UniqueConstraint(name = "uk_signal_one_time_pre_keys_user_prekey", columnNames = {"user_id", "pre_key_id"})
+    },
+    indexes = {
+        @Index(name = "idx_signal_one_time_pre_keys_user_consumed", columnList = "user_id, consumed_at")
     }
 )
-public class SignalKyberPreKey {
+public class SignalOneTimePreKey {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     // Logic id on Signal protocol, not the database id
-    @Column(name = "kyber_pre_key_id", nullable = false)
+    @Column(name = "pre_key_id", nullable = false)
     private int preKeyId;
 
-    // Public key 
+    // Public key
     @Lob
     @Column(name = "public_key", nullable = false)
     private byte[] publicKey;
 
-    // Signature of the pre-key, signed by the user's identity key
-    @Lob
-    @Column(name = "signature", nullable = false)
-    private byte[] signature;
-
-    @Column(name = "is_active", nullable = false)
-    private boolean isActive;
 
     @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     @Column(name = "uploaded_at", nullable = false)
     private LocalDateTime uploadedAt;
 
     @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    @Column(name = "retired_at")
-    private LocalDateTime retiredAt;
+    @Column(name = "consumed_at")
+    private LocalDateTime consumedAt;
 
-    public SignalKyberPreKey() {
+    public SignalOneTimePreKey() {
         // Default constructor for JPA
     }
 
-    public SignalKyberPreKey(int preKeyId, byte[] publicKey, byte[] signature, User user) {
+    public SignalOneTimePreKey(int preKeyId, byte[] publicKey, User user) {
         this.preKeyId = preKeyId;
         this.publicKey = publicKey;
-        this.signature = signature;
         this.user = user;
-        this.isActive = true;
         this.uploadedAt = LocalDateTime.now();
     }
 
@@ -101,20 +96,15 @@ public class SignalKyberPreKey {
         return this.preKeyId;
     }
 
-    public byte[] GetPublicKey() {
+     public byte[] GetPublicKey() {
         return this.publicKey;
     }
 
-    public byte[] GetSignature() {
-        return this.signature;
+     public void SetConsumedAt(LocalDateTime consumedAt) {
+        this.consumedAt = consumedAt;
     }
 
-    public boolean IsActive() {
-        return this.isActive;
-    }
-
-    public void Retire() {
-        this.isActive = false;
-        this.retiredAt = LocalDateTime.now();
+     public LocalDateTime GetConsumedAt() {
+        return this.consumedAt;
     }
 }

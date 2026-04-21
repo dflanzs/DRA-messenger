@@ -19,32 +19,33 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
+
 /*
- * Save user's signed pre-keys history and mark which one is active. 
+ * Save user's kyber keys history and active key to manage sessions. 
  */
 
 @Entity
 @Table(
-    name = "signal_kyber_pre_keys",
+    name = "signal_signed_pre_keys",
     uniqueConstraints = {
-        @UniqueConstraint(name = "uk_signal_kyber_pre_keys_user_prekey", columnNames = {"user_id", "kyber_pre_key_id"})
+        @UniqueConstraint(name = "uk_signal_signed_pre_keys_user_prekey", columnNames = {"user_id", "signed_pre_key_id"})
     }
 )
-public class SignalKyberPreKey {
-
+public class SignalSignedPreKey {
+    
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
-
+    
     // Logic id on Signal protocol, not the database id
-    @Column(name = "kyber_pre_key_id", nullable = false)
+    @Column(name = "signed_pre_key_id", nullable = false)
     private int preKeyId;
 
-    // Public key 
+    // Public key
     @Lob
     @Column(name = "public_key", nullable = false)
     private byte[] publicKey;
@@ -65,11 +66,11 @@ public class SignalKyberPreKey {
     @Column(name = "retired_at")
     private LocalDateTime retiredAt;
 
-    public SignalKyberPreKey() {
+    public SignalSignedPreKey() {
         // Default constructor for JPA
     }
 
-    public SignalKyberPreKey(int preKeyId, byte[] publicKey, byte[] signature, User user) {
+    public SignalSignedPreKey(int preKeyId, byte[] publicKey, byte[] signature, User user) {
         this.preKeyId = preKeyId;
         this.publicKey = publicKey;
         this.signature = signature;
@@ -118,3 +119,4 @@ public class SignalKyberPreKey {
         this.retiredAt = LocalDateTime.now();
     }
 }
+
