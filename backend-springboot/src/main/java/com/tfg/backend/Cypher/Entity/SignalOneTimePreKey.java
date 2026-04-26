@@ -96,8 +96,12 @@ public class SignalOneTimePreKey {
         return this.preKeyId;
     }
 
-     public byte[] GetPublicKey() {
+    public byte[] GetPublicKey() {
         return this.publicKey;
+    }
+
+    public void SetPublicKey(byte[] publicKey) {
+        this.publicKey = publicKey;
     }
 
      public void SetConsumedAt(LocalDateTime consumedAt) {

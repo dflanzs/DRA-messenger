@@ -101,6 +101,7 @@ public class SignalAccount {
 
     public void SetUser(User user) {
         this.user = user;
+        this.userId = user.getId();
     }
 
     public int GetDeviceId() {

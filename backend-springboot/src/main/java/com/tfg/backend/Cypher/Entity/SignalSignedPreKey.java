@@ -106,8 +106,16 @@ public class SignalSignedPreKey {
         return this.publicKey;
     }
 
+    public void SetPublicKey(byte[] publicKey) {
+        this.publicKey = publicKey;
+    }
+
     public byte[] GetSignature() {
         return this.signature;
+    }
+
+    public void SetSignature(byte[] signature) {
+        this.signature = signature;
     }
 
     public boolean IsActive() {
