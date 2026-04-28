@@ -240,6 +240,10 @@ public class SignalService {
         }
 
         SignalOneTimePreKey oneTimePreKey = signalOneTimePreKeyRepository.getUnconsumedPreKeyByUserId(userId);
+        if (oneTimePreKey != null) {
+            oneTimePreKey.SetConsumedAt(LocalDateTime.now());
+            signalOneTimePreKeyRepository.save(oneTimePreKey);
+        }
 
         String oneTimePreKeyString = java.util.Base64.getEncoder().encodeToString(oneTimePreKey.GetPublicKey());
         String activeSignedPreKeyString = java.util.Base64.getEncoder().encodeToString(userAccount.GetActiveSignedPreKey().GetPublicKey());
