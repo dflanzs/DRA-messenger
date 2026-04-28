@@ -73,8 +73,10 @@ public class MessageService {
             User receiver = userRepository.findByIdAndDeletedAtIsNull(receiverId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Receptor no válido"));
 
-            chat = oneToOneChatRepository.findChatBetweenUsers(sender.getId(), receiverId)
-                .orElseGet(() -> oneToOneChatRepository.save(new OneToOneChat(sender, receiver)));
+            chat = oneToOneChatRepository.findChatBetweenUsers(sender.getId(), receiverId);
+            if (chat == null) {
+                 oneToOneChatRepository.save(new OneToOneChat(sender, receiver));
+            }
         }
 
         trustCirclesService.validateUsersCanCommunicate(sender.getId(), receiverId);
