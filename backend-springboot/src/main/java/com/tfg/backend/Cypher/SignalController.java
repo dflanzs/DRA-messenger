@@ -5,6 +5,8 @@ import com.tfg.backend.Cypher.dto.SignalBootstrapResponseDto;
 import com.tfg.backend.Cypher.dto.SignalBundleResponseDto;
 import com.tfg.backend.Cypher.dto.SignalRefillRequestDto;
 import com.tfg.backend.Cypher.dto.SignalRefillResponseDto;
+import com.tfg.backend.TrustCircles.TrustCircles;
+import com.tfg.backend.TrustCircles.TrustCirclesService;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserService;
 
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
+import java.util.List;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,10 +30,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 public class SignalController {
     private final SignalService signalService;
     private final UserService userService;
+    private final TrustCirclesService trustCirclesService;
 
-    public SignalController(SignalService signalService, UserService userService) {
+    public SignalController(SignalService signalService, UserService userService, TrustCirclesService trustCirclesService) {
         this.signalService = signalService;
         this.userService = userService;
+        this.trustCirclesService = trustCirclesService;
     }
 
 
@@ -56,10 +61,16 @@ public class SignalController {
     }
 
     @GetMapping("/users/{userId}/bundle")
-    @PreAuthorize("@authorizationService.isSelf(authentication, #userId)")
     public SignalBundleResponseDto getUserBundle(
-            @PathVariable Long userId
+            @PathVariable Long userId,
+            Principal principal
     ) {
+        User user = userService.getByEmail(principal.getName());
+
+        if (!trustCirclesService.canUsersCommunicate(userId, user.getId())) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Can not communicate with this user");
+        }
+
         SignalBundleResponseDto response = signalService.getUserBundle(userId);
         return response;
     }
