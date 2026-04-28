@@ -1,12 +1,16 @@
 package com.tfg.backend.Cypher;
 
+import java.beans.Encoder;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Base64.Decoder;
 import java.util.Set;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -14,16 +18,23 @@ import com.tfg.backend.Cypher.Repositories.SignalAccountRepository;
 import com.tfg.backend.Cypher.Repositories.SignalKyberPreKeyRepository;
 import com.tfg.backend.Cypher.Repositories.SignalOneTimePreKeyRepository;
 import com.tfg.backend.Cypher.Repositories.SignalSignedPreKeyRepository;
+import com.tfg.backend.Cypher.Repositories.SignalEnvelopeRepository;
 import com.tfg.backend.Cypher.dto.SignalBootstrapRequestDto;
 import com.tfg.backend.Cypher.dto.SignalBootstrapResponseDto;
 import com.tfg.backend.Cypher.dto.SignalBundleResponseDto;
+import com.tfg.backend.Cypher.dto.SignalDirectMessageRequestDto;
+import com.tfg.backend.Cypher.dto.SignalDirectMessageResponseDto;
+import com.tfg.backend.Cypher.dto.SignalDirectMessageWSDto;
 import com.tfg.backend.Cypher.dto.SignalOneTimePreKeyDto;
 import com.tfg.backend.Cypher.dto.SignalRefillRequestDto;
 import com.tfg.backend.Cypher.dto.SignalRefillResponseDto;
+import com.tfg.backend.OneToOneChat.OneToOneChat;
+import com.tfg.backend.OneToOneChat.OneToOneChatRepository;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserService;
 import com.tfg.backend.Cypher.Entity.SignalSignedPreKey;
 import com.tfg.backend.Cypher.Entity.SignalAccount;
+import com.tfg.backend.Cypher.Entity.SignalEnvelope;
 import com.tfg.backend.Cypher.Entity.SignalKyberPreKey;
 import com.tfg.backend.Cypher.Entity.SignalOneTimePreKey;
 
@@ -32,24 +43,37 @@ import jakarta.transaction.Transactional;
 @Service
 public class SignalService {
 
+    private final UserService userService;
+    private final OneToOneChat oneToOneChat;
+
     private final SignalAccountRepository signalAccountRepository;
     private final SignalKyberPreKeyRepository signalKyberPreKeyRepository;
     private final SignalSignedPreKeyRepository signalSignedPreKeyRepository;
     private final SignalOneTimePreKeyRepository signalOneTimePreKeyRepository;
-    private final UserService userService;
+    private final SignalEnvelopeRepository signalEnvelopeRepository;
+    private final OneToOneChatRepository oneToOneChatRepository;
+    private final SimpMessagingTemplate simpMessagingTemplate;
 
     public SignalService(
+            UserService userService,
+            OneToOneChat oneToOneChat,
             SignalAccountRepository signalAccountRepository,
             SignalKyberPreKeyRepository signalKyberPreKeyRepository,
             SignalSignedPreKeyRepository signalSignedPreKeyRepository,
             SignalOneTimePreKeyRepository signalOneTimePreKeyRepository,
-            UserService userService
+            SignalEnvelopeRepository signalEnvelopeRepository,
+            OneToOneChatRepository oneToOneChatRepository,
+            SimpMessagingTemplate simpMessagingTemplate
             ) {
+        this.userService = userService;
+        this.oneToOneChat = oneToOneChat;
         this.signalAccountRepository = signalAccountRepository;
         this.signalKyberPreKeyRepository = signalKyberPreKeyRepository;
         this.signalSignedPreKeyRepository = signalSignedPreKeyRepository;
         this.signalOneTimePreKeyRepository = signalOneTimePreKeyRepository;
-        this.userService = userService;
+        this.signalEnvelopeRepository = signalEnvelopeRepository;
+        this.oneToOneChatRepository = oneToOneChatRepository;
+        this.simpMessagingTemplate = simpMessagingTemplate;
     }
 
     @Transactional
@@ -264,5 +288,51 @@ public class SignalService {
                 activeKyberPreKeyString,
                 activeKyberPreKeySignatureString
         );
+    }
+
+    @Transactional
+    public SignalDirectMessageResponseDto storeDirectMessage(Long senderUserId, SignalDirectMessageRequestDto request) {
+        // Check if recipient exists
+        User recipient = userService.getById(request.getRecipientUserId());
+        if (recipient == null) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Recipient user does not exist");
+        }
+
+        // Check if conversationId corresponds to a valid one-to-one chat between sender and recipient
+        OneToOneChat oneToOneChat = oneToOneChatRepository.findChatBetweenUsers(senderUserId, request.getRecipientUserId());
+        if (request.getConversationId() != oneToOneChat.getId()) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid conversation ID");
+        }
+
+        User sender = userService.getById(senderUserId);
+
+        Decoder decoder = java.util.Base64.getDecoder();
+        SignalEnvelope signalEnvelope = new SignalEnvelope(
+                sender,
+                recipient,
+                oneToOneChat,
+                decoder.decode(request.getCypherTextB64()),
+                request.getCypherTextType()
+                );
+        
+        if (signalEnvelope != null && signalEnvelope.IsConversationConsistent()) {
+            signalEnvelopeRepository.save(signalEnvelope);
+        }
+
+        // Send message through WebSocket to recipient
+        SignalDirectMessageWSDto wsMessage = new SignalDirectMessageWSDto(
+                    signalEnvelope.getId(),
+                    signalEnvelope,
+                    signalEnvelope.getSender().getId(),
+                    signalEnvelope.getReceiver().getId(),
+                    signalEnvelope.getConversationType(),
+                    request.getCypherTextType(),
+                    Base64.getEncoder().encodeToString(signalEnvelope.getCypherText()),
+                    signalEnvelope.getCreatedAt()
+                );
+        
+        simpMessagingTemplate.convertAndSendToUser(recipient.getEmail(), "/queue/signal-messages", wsMessage);
+
+        return new SignalDirectMessageResponseDto(signalEnvelope.getId(), signalEnvelope.getCreatedAt());
     }
 }
