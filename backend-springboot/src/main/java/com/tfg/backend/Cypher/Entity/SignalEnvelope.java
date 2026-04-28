@@ -34,7 +34,7 @@ import jakarta.validation.constraints.AssertTrue;
     }
 )
 @Check(constraints = "((conversation_type = 'DIRECT' AND one_to_one_chat_id IS NOT NULL AND group_chat_id IS NULL) OR (conversation_type = 'GROUP' AND group_chat_id IS NOT NULL AND one_to_one_chat_id IS NULL))")
-public class SignalEnvelopes {
+public class SignalEnvelope {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -48,7 +48,7 @@ public class SignalEnvelopes {
     @JoinColumn(name = "recipient_user_id", nullable = false)
     private User receiver;
 
-    private enum ConversationType {
+    public enum ConversationType {
         DIRECT("DIRECT"), // Equivalent in Signal to One-to-One chats 
         GROUP("GROUP");
 
@@ -97,11 +97,12 @@ public class SignalEnvelopes {
     @Column(name = "read_at")
     private LocalDateTime readAt;
 
-    public SignalEnvelopes() {
+    public SignalEnvelope() {
         // Default constructor for JPA
     }
-
-    public SignalEnvelopes(User sender, User receiver, GroupChat groupChat, byte[] cypherText, Short cypherTextType) {
+    
+    // OneToOneChats and GroupChats are different classes so we dont have to check the type, only assign it for libsignal
+    public SignalEnvelope(User sender, User receiver, GroupChat groupChat, byte[] cypherText, Short cypherTextType) {
         this.sender = sender;
         this.receiver = receiver;
         this.groupChat = groupChat;
@@ -111,7 +112,7 @@ public class SignalEnvelopes {
         this.conversationType = ConversationType.GROUP;
     }
 
-    public SignalEnvelopes(User sender, User receiver, OneToOneChat oneToOneChat, byte[] cypherText, Short cypherTextType) {
+    public SignalEnvelope(User sender, User receiver, OneToOneChat oneToOneChat, byte[] cypherText, Short cypherTextType) {
         this.sender = sender;
         this.receiver = receiver;
         this.oneToOneChat = oneToOneChat;
@@ -139,7 +140,11 @@ public class SignalEnvelopes {
         return this.groupChat != null && this.oneToOneChat == null;
     }
 
-    public User GetSender() {
+    public Long getId() {
+        return this.id;
+    }
+
+    public User getSender() {
         return this.sender;
     }
 
@@ -147,7 +152,7 @@ public class SignalEnvelopes {
         this.sender = sender;
     }
 
-    public User GetReceiver() {
+    public User getReceiver() {
         return this.receiver;
     }
 
@@ -155,11 +160,11 @@ public class SignalEnvelopes {
         this.receiver = receiver;
     }
 
-    public String GetConversationType() {
+    public String getConversationType() {
         return this.conversationType.getValue();
     }
 
-    public GroupChat GetGroupChat() {
+    public GroupChat getGroupChat() {
         return this.groupChat;
     }
 
@@ -167,7 +172,7 @@ public class SignalEnvelopes {
         this.groupChat = groupChat;
     }
 
-    public OneToOneChat GetOneToOneChat() {
+    public OneToOneChat getOneToOneChat() {
         return this.oneToOneChat;
     }
 
@@ -175,7 +180,7 @@ public class SignalEnvelopes {
         this.oneToOneChat = oneToOneChat;
     }
 
-    public byte[] GetCypherText() {
+    public byte[] getCypherText() {
         return this.cypherText;
     }
 
@@ -183,11 +188,11 @@ public class SignalEnvelopes {
         this.cypherText = cypherText;
     }
 
-    public int GetCypherTextType() {
+    public int getCypherTextType() {
         return this.cypherTextType;
     }
 
-    public UUID GetClientMessageId() {
+    public UUID getClientMessageId() {
         return this.clientMessageId;
     }
 
@@ -195,11 +200,11 @@ public class SignalEnvelopes {
         this.clientMessageId = clientMessageId;
     }
 
-    public LocalDateTime GetCreatedAt() {
+    public LocalDateTime getCreatedAt() {
         return this.createdAt;
     }
 
-    public LocalDateTime GetDeliveredAt() {
+    public LocalDateTime getDeliveredAt() {
         return this.deliveredAt;
     }
 
@@ -207,7 +212,7 @@ public class SignalEnvelopes {
         this.deliveredAt = deliveredAt;
     }
 
-    public LocalDateTime GetReadAt() {
+    public LocalDateTime getReadAt() {
         return this.readAt;
     }
 
