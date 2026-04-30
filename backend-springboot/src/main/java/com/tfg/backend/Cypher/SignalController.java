@@ -3,11 +3,8 @@ package com.tfg.backend.Cypher;
 import com.tfg.backend.Cypher.dto.SignalBootstrapRequestDto;
 import com.tfg.backend.Cypher.dto.SignalBootstrapResponseDto;
 import com.tfg.backend.Cypher.dto.SignalBundleResponseDto;
-import com.tfg.backend.Cypher.dto.SignalDirectMessageRequestDto;
-import com.tfg.backend.Cypher.dto.SignalDirectMessageResponseDto;
 import com.tfg.backend.Cypher.dto.SignalRefillRequestDto;
 import com.tfg.backend.Cypher.dto.SignalRefillResponseDto;
-import com.tfg.backend.TrustCircles.TrustCircles;
 import com.tfg.backend.TrustCircles.TrustCirclesService;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserService;
@@ -18,9 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
-import java.util.List;
 
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -76,22 +71,4 @@ public class SignalController {
         SignalBundleResponseDto response = signalService.getUserBundle(userId);
         return response;
     }
-
-    @PostMapping("messages/direct")
-    public SignalDirectMessageResponseDto postDirectMessage(
-            @Valid @RequestBody SignalDirectMessageRequestDto request,
-            Principal principal
-    ) {
-        // Check if sender can communicate with recipient
-        User sender = userService.getByEmail(principal.getName());
-
-        if (!trustCirclesService.canUsersCommunicate(request.getRecipientUserId(), sender.getId())) {
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Can not communicate with this user");
-        }
-
-        SignalDirectMessageResponseDto response = signalService.storeDirectMessage(sender.getId(), request);
-
-        return response;
-    } 
-
 }
