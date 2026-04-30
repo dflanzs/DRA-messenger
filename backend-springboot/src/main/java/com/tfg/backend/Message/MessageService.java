@@ -1,15 +1,33 @@
 package com.tfg.backend.Message;
 
-import com.tfg.backend.Message.dto.SendMessageDTO;
+import com.tfg.backend.Cypher.Entity.SignalEnvelope;
+import com.tfg.backend.Cypher.dto.SignalDirectMessageRequestDto;
+import com.tfg.backend.Cypher.dto.SignalDirectMessageResponseDto;
+import com.tfg.backend.Cypher.dto.SignalDirectMessageWSDto;
+import com.tfg.backend.Cypher.dto.SignalGroupMessageRequestDto;
+import com.tfg.backend.Cypher.dto.SignalGroupMessageResponseDto;
+import com.tfg.backend.GroupChat.GroupChat;
+import com.tfg.backend.GroupChat.GroupChatRepository;
 import com.tfg.backend.OneToOneChat.OneToOneChat;
 import com.tfg.backend.OneToOneChat.OneToOneChatRepository;
 import com.tfg.backend.TrustCircles.TrustCirclesService;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserRepository;
+import com.tfg.backend.Cypher.Repositories.SignalEnvelopeRepository;
+import com.tfg.backend.User.UserService;
+
+import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
-import org.springframework.http.HttpStatus;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.Base64.Decoder;
+
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -18,18 +36,29 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final OneToOneChatRepository oneToOneChatRepository;
-    private final TrustCirclesService trustCirclesService;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final UserService userService;
+    private final SignalEnvelopeRepository signalEnvelopeRepository;
+    private final GroupChatRepository groupChatRepository;
 
     public MessageService(
         MessageRepository messageRepository,
         UserRepository userRepository,
         OneToOneChatRepository oneToOneChatRepository,
-        TrustCirclesService trustCirclesService
+        TrustCirclesService trustCirclesService,
+        SimpMessagingTemplate messagingTemplate,
+        UserService userService,
+        SignalEnvelopeRepository signalEnvelopeRepository,
+        GroupChatRepository groupChatRepository
     ) {
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
         this.oneToOneChatRepository = oneToOneChatRepository;
         this.trustCirclesService = trustCirclesService;
+        this.messagingTemplate = messagingTemplate;
+        this.userService = userService;
+        this.signalEnvelopeRepository = signalEnvelopeRepository;
+        this.groupChatRepository = groupChatRepository;
     }
 
     @Transactional(readOnly = true)
@@ -48,103 +77,100 @@ public class MessageService {
     }
 
     @Transactional
-    public Message create(SendMessageDTO messageDTO) {
-        User sender = userRepository.findByIdAndDeletedAtIsNull(messageDTO.getSenderId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Remitente no válido"));
-
-        Long oneToOneChatOrReceiverId = messageDTO.getOneToOneChatId();
-        if (oneToOneChatOrReceiverId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Falta el chat o receptor");
+    public SignalGroupMessageResponseDto sendGroupMessage(Long senderUserId, SignalGroupMessageRequestDto request) {
+        // Check if conversationId corresponds to a valid group chat the sender is part of
+        if (!groupChatRepository.existsByIdAndUser_Id(request.getGroupChatId(), senderUserId)) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid conversation ID or sender is not part of the group chat");
         }
 
-        OneToOneChat chat;
-        Long receiverId;
+        User sender = userService.getById(senderUserId);
 
-        var existingChat = oneToOneChatRepository.findById(oneToOneChatOrReceiverId);
-        if (existingChat.isPresent()) {
-            chat = existingChat.get();
-            Long[] chatUserIds = chat.getUserIds();
-            if (!sender.getId().equals(chatUserIds[0]) && !sender.getId().equals(chatUserIds[1])) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "El remitente no pertenece al chat");
+        GroupChat groupChat = groupChatRepository.findById(request.getGroupChatId())
+            .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Group chat not found"));
+        Set<Long> chatUserIds = groupChat.getUserIds();
+
+        List<Long> envelopeIds = new ArrayList<>();
+
+        Decoder decoder = java.util.Base64.getDecoder();
+        for (Long id : chatUserIds) {
+            User recipient = userService.getById(id);
+            SignalEnvelope signalEnvelope = new SignalEnvelope(
+                    sender,
+                    recipient,
+                    groupChat,
+                    decoder.decode(request.getCypherTextB64()),
+                    request.getCypherTextType()
+                    );
+
+            if (signalEnvelope != null && signalEnvelope.IsConversationConsistent()) {
+                signalEnvelopeRepository.save(signalEnvelope);
             }
-            receiverId = sender.getId().equals(chatUserIds[0]) ? chatUserIds[1] : chatUserIds[0];
-        } else {
-            receiverId = oneToOneChatOrReceiverId;
-            User receiver = userRepository.findByIdAndDeletedAtIsNull(receiverId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Receptor no válido"));
 
-            chat = oneToOneChatRepository.findChatBetweenUsers(sender.getId(), receiverId);
-            if (chat == null) {
-                 oneToOneChatRepository.save(new OneToOneChat(sender, receiver));
-            }
+            // Send message through WebSocket to recipient
+            SignalDirectMessageWSDto wsMessage = new SignalDirectMessageWSDto(
+                    signalEnvelope.getId(),
+                    signalEnvelope,
+                    signalEnvelope.getSender().getId(),
+                    signalEnvelope.getReceiver().getId(),
+                    signalEnvelope.getConversationType(),
+                    request.getCypherTextType(),
+                    Base64.getEncoder().encodeToString(signalEnvelope.getCypherText()),
+                    signalEnvelope.getCreatedAt()
+                    );
+            User userReceiver = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario receptor no encontrado"));
+
+            messagingTemplate.convertAndSendToUser(userReceiver.getEmail(), "/queue/messages", wsMessage);
+
+            envelopeIds.add(signalEnvelope.getId());
         }
 
-        trustCirclesService.validateUsersCanCommunicate(sender.getId(), receiverId);
-
-        Message message = new Message(sender, messageDTO.getContent(), chat);
-        return messageRepository.save(message);
+        return new SignalGroupMessageResponseDto(envelopeIds, LocalDateTime.now());
     }
 
     @Transactional
-    public Message update(Long id, SendMessageDTO messageDTO) {
-        if (id == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Id inválido");
+    public SignalDirectMessageResponseDto sendPrivateMessage(Long senderUserId, SignalDirectMessageRequestDto request) {
+        // Check if recipient exists
+        User recipient = userService.getById(request.getRecipientUserId());
+        if (recipient == null) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Recipient user does not exist");
         }
 
-        Message message = messageRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mensaje no encontrado"));
-
-        message.setContent(messageDTO.getContent());
-        return messageRepository.save(message);
-    }
-
-    @Transactional
-    public void delete(Long id) {
-        if (id == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Id inválido");
+        // Check if conversationId corresponds to a valid one-to-one chat between sender and recipient
+        OneToOneChat oneToOneChat = oneToOneChatRepository.findChatBetweenUsers(senderUserId, request.getRecipientUserId());
+        if (request.getConversationId() != oneToOneChat.getId()) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid conversation ID");
         }
 
-        if (!messageRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Mensaje no encontrado");
+        User sender = userService.getById(senderUserId);
+
+        Decoder decoder = java.util.Base64.getDecoder();
+        SignalEnvelope signalEnvelope = new SignalEnvelope(
+                sender,
+                recipient,
+                oneToOneChat,
+                decoder.decode(request.getCypherTextB64()),
+                request.getCypherTextType()
+                );
+        
+        if (signalEnvelope != null && signalEnvelope.IsConversationConsistent()) {
+            signalEnvelopeRepository.save(signalEnvelope);
         }
 
-        messageRepository.deleteById(id);
-    }
+        // Send message through WebSocket to recipient
+        SignalDirectMessageWSDto wsMessage = new SignalDirectMessageWSDto(
+                    signalEnvelope.getId(),
+                    signalEnvelope,
+                    signalEnvelope.getSender().getId(),
+                    signalEnvelope.getReceiver().getId(),
+                    signalEnvelope.getConversationType(),
+                    request.getCypherTextType(),
+                    Base64.getEncoder().encodeToString(signalEnvelope.getCypherText()),
+                    signalEnvelope.getCreatedAt()
+                );
+        
+        messagingTemplate.convertAndSendToUser(recipient.getEmail(), "/queue/signal-messages", wsMessage);
 
-
-    @Transactional(readOnly = true)
-    public List<Message> getUnreadMessages(Long userId) {
-        if (userId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Id inválido");
-        }
-
-        List<OneToOneChat> userChats = oneToOneChatRepository.findChatsForUser(userId);
-
-        List<OneToOneChat> allowedChats = userChats.stream()
-            .filter(chat -> {
-                Long[] userIds = chat.getUserIds();
-                Long otherUserId = userId.equals(userIds[0]) ? userIds[1] : userIds[0];
-                return trustCirclesService.canUsersCommunicate(userId, otherUserId);
-            })
-            .toList();
-
-        if (allowedChats.isEmpty()) {
-            return List.of();
-        }
-
-        return messageRepository.findUnreadMessagesInChats(allowedChats, userId);
-    }
-
-    @Transactional
-    public Message markAsRead(Long id) {
-        if (id == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Id inválido");
-        }
-
-        Message message = messageRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mensaje no encontrado"));
-
-        message.setRead(true);
-        return messageRepository.save(message);
+        return new SignalDirectMessageResponseDto(signalEnvelope.getId(), signalEnvelope.getCreatedAt());
     }
 }

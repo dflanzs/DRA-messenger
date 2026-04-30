@@ -5,6 +5,8 @@ import java.security.Principal;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,7 +17,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.tfg.backend.Message.dto.SendMessageDTO;
+import com.tfg.backend.Cypher.dto.SignalDirectMessageRequestDto;
+import com.tfg.backend.Cypher.dto.SignalGroupMessageRequestDto;
+import com.tfg.backend.GroupChat.GroupChatService;
+import com.tfg.backend.TrustCircles.TrustCirclesService;
+import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserService;
 import org.springframework.security.access.prepost.PreAuthorize;
 
@@ -25,74 +31,40 @@ public class MessageController {
 
     private final MessageService messageService;
     private final UserService userService;
+    private final TrustCirclesService trustCirclesService;
 
-    public MessageController(MessageService messageService, UserService userService) {
+    public MessageController(
+            MessageService messageService,
+            UserService userService,
+            TrustCirclesService trustCirclesService
+            ) {
         this.messageService = messageService;
         this.userService = userService;
+        this.trustCirclesService = trustCirclesService;
     }
 
-    /**
-     * Obtener todos los mensajes
-     */
-    @PreAuthorize("@authorizationService.isAdmin(authentication)")
-    @GetMapping
-    public List<Message> list() {
-        return messageService.list();
+    @MessageMapping("/group-message")
+    public void sendGroupMessage(
+            @Payload SignalGroupMessageRequestDto messageDTO,
+            Principal principal
+    ) {
+        User sender = userService.getByEmail(principal.getName());
+
+        messageService.sendGroupMessage(sender.getId(), messageDTO);
     }
 
-    /**
-     * Obtener un mensaje por ID
-     */
-    @PreAuthorize("@authorizationService.isAdmin(authentication)")
-    @GetMapping("/{id}")
-    public ResponseEntity<Message> get(@PathVariable Long id) {
-        return ResponseEntity.ok(messageService.getById(id));
-    }
+	@MessageMapping("/private-message")
+	public void sendPrivateMessage(
+            @Valid SignalDirectMessageRequestDto request,
+            Principal principal
+    ) {
+        // Check if sender can communicate with recipient
+        User sender = userService.getByEmail(principal.getName());
 
-    /**
-     * Crear un nuevo mensaje
-     */
-    @PostMapping
-    public ResponseEntity<Message> create(@Valid @RequestBody SendMessageDTO messageDTO) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(messageService.create(messageDTO));
-    }
-
-    /**
-     * Actualizar un mensaje
-     */
-    @PutMapping("/{id}")
-    public ResponseEntity<Message> update(@PathVariable Long id, @Valid @RequestBody SendMessageDTO messageDTO) {
-        return ResponseEntity.ok(messageService.update(id, messageDTO));
-    }
-
-    /**
-     * Eliminar un mensaje
-     */
-    @PreAuthorize("@authorizationService.isAdmin(authentication)")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        messageService.delete(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * Obtener mensajes no leídos de un usuario
-     */
-    @GetMapping("/unread")
-    public ResponseEntity<List<Message>> getUnreadMessages(Principal principal) {
-        if (principal == null) {
-            throw new ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED,
-                "Usuario no autenticado");
+        if (!trustCirclesService.canUsersCommunicate(request.getRecipientUserId(), sender.getId())) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Can not communicate with this user");
         }
-        Long userId = userService.getByEmail(principal.getName()).getId();
-        return ResponseEntity.ok(messageService.getUnreadMessages(userId));
-    }
 
-    /**
-     * Marcar un mensaje como leído
-     */
-    @PutMapping("/{id}/read")
-    public ResponseEntity<Message> markAsRead(@PathVariable Long id) {
-        return ResponseEntity.ok(messageService.markAsRead(id));
-    }
+		messageService.sendPrivateMessage(sender.getId(), request);
+	}
 }
