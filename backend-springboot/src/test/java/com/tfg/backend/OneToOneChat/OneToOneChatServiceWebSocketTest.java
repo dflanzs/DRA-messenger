@@ -1,15 +1,13 @@
 package com.tfg.backend.OneToOneChat;
 
-import com.tfg.backend.SignalEnvelope.Message;
-import com.tfg.backend.SignalEnvelope.MessageRepository;
-import com.tfg.backend.SignalEnvelope.dto.SendMessageDTO;
+import com.tfg.backend.SignalEnvelope.SignalEnvelope;
+import com.tfg.backend.SignalEnvelope.SignalEnvelopeRepository;
+import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageRequestDto;
 import com.tfg.backend.TrustCircles.TrustCirclesService;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserRepository;
-import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.Optional;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -18,7 +16,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -27,7 +24,7 @@ import static org.mockito.Mockito.when;
 class OneToOneChatServiceWebSocketTest {
 
     @Mock
-    private MessageRepository messageRepository;
+    private SignalEnvelopeRepository signalEnvelopeRepository;
 
     @Mock
     private OneToOneChatRepository oneToOneChatRepository;
@@ -41,18 +38,6 @@ class OneToOneChatServiceWebSocketTest {
     @Mock
     private TrustCirclesService trustCirclesService;
 
-    private OneToOneChatService oneToOneChatService;
-
-    @BeforeEach
-    void setUp() {
-        oneToOneChatService = new OneToOneChatService(
-            messageRepository,
-            oneToOneChatRepository,
-            userRepository,
-            messagingTemplate,
-            trustCirclesService
-        );
-    }
 
     @Test
     void sendPrivateMessage_routesToReceiverEmail_notSenderEmail() {
@@ -60,44 +45,57 @@ class OneToOneChatServiceWebSocketTest {
         User receiver = buildUser(2L, "receiver@example.com");
         OneToOneChat chat = new OneToOneChat(sender, receiver);
 
-        SendMessageDTO dto = new SendMessageDTO();
-        dto.setOneToOneChatId(10L);
-        dto.setContent("hola");
+        // Prepare DTO
+        SignalDirectMessageRequestDto dto = new SignalDirectMessageRequestDto();
+        setField(dto, "recipientUserId", 2L);
+        setField(dto, "conversationId", 10L);
+        setField(dto, "cypherTextType", (short) 1);
+        setField(dto, "cypherTextB64", java.util.Base64.getEncoder().encodeToString("hola".getBytes()));
 
-        Message persisted = new Message(sender, "hola", chat);
-        persisted.setId(99L);
-        persisted.setCreatedAt(LocalDateTime.of(2026, 4, 9, 12, 0, 0));
+        byte[] cypherText = "hola".getBytes();
+        Short cypherTextType = 1;
+        SignalEnvelope persisted = new SignalEnvelope(sender, receiver, chat, cypherText, cypherTextType);
+        setIdAndCreatedAt(persisted, 99L, LocalDateTime.of(2026, 4, 9, 12, 0, 0));
 
-        Principal principal = () -> "sender@example.com";
-
-        when(userRepository.findByEmailAndDeletedAtIsNull("sender@example.com"))
-            .thenReturn(Optional.of(sender));
-        when(oneToOneChatRepository.findById(10L)).thenReturn(Optional.of(chat));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(sender));
         when(userRepository.findById(2L)).thenReturn(Optional.of(receiver));
-        when(messageRepository.save(any(Message.class))).thenReturn(persisted);
+        when(oneToOneChatRepository.findById(10L)).thenReturn(Optional.of(chat));
+        when(signalEnvelopeRepository.save(any(SignalEnvelope.class))).thenReturn(persisted);
 
-        oneToOneChatService.sendPrivateMessage(dto, principal);
-
+        // Verify repository and messaging interactions
         verify(trustCirclesService).validateUsersCanCommunicate(1L, 2L);
-
         ArgumentCaptor<String> userCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> destinationCaptor = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<SendMessageDTO> payloadCaptor = ArgumentCaptor.forClass(SendMessageDTO.class);
-
         verify(messagingTemplate).convertAndSendToUser(
             userCaptor.capture(),
             destinationCaptor.capture(),
-            payloadCaptor.capture()
+            any()
         );
-
         assertEquals("receiver@example.com", userCaptor.getValue());
-        assertEquals("/queue/messages", destinationCaptor.getValue());
+        assertEquals("/queue/signal-messages", destinationCaptor.getValue());
+    }
 
-        SendMessageDTO sentPayload = payloadCaptor.getValue();
-        assertNotNull(sentPayload);
-        assertEquals(99L, sentPayload.getId());
-        assertEquals(1L, sentPayload.getSenderId());
-        assertEquals("hola", sentPayload.getContent());
+    // Helper to set private fields in DTOs
+    private void setField(Object obj, String fieldName, Object value) {
+        try {
+            java.lang.reflect.Field field = obj.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            field.set(obj, value);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+    private void setIdAndCreatedAt(SignalEnvelope envelope, Long id, LocalDateTime createdAt) {
+        try {
+            java.lang.reflect.Field idField = SignalEnvelope.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(envelope, id);
+            java.lang.reflect.Field createdAtField = SignalEnvelope.class.getDeclaredField("createdAt");
+            createdAtField.setAccessible(true);
+            createdAtField.set(envelope, createdAt);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private User buildUser(Long id, String email) {

@@ -4,6 +4,7 @@ import com.tfg.backend.GroupChat.GroupChat;
 import com.tfg.backend.GroupChat.GroupChatRepository;
 import com.tfg.backend.OneToOneChat.OneToOneChat;
 import com.tfg.backend.OneToOneChat.OneToOneChatRepository;
+import com.tfg.backend.SignalEnvelope.SignalEnvelope.MessageStatus;
 import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageRequestDto;
 import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageResponseDto;
 import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageWSDto;
@@ -29,11 +30,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class SignalEnvelopeService {
-     public enum MessageStatus {
-        PENDING,
-        DELIVERED,
-        READ
-    }
+
 
     private final UserRepository userRepository;
     private final OneToOneChatRepository oneToOneChatRepository;
@@ -71,7 +68,7 @@ public class SignalEnvelopeService {
     @Transactional
     public SignalGroupMessageResponseDto sendGroupMessage(Long senderUserId, SignalGroupMessageRequestDto request) {
         // Check if conversationId corresponds to a valid group chat the sender is part of
-        if (!groupChatRepository.existsByIdAndUser_Id(request.getGroupChatId(), senderUserId)) {
+        if (!groupChatRepository.existsByIdAndUsers_Id(request.getGroupChatId(), senderUserId)) {
             throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid conversation ID or sender is not part of the group chat");
         }
 
@@ -168,6 +165,6 @@ public class SignalEnvelopeService {
 
     @Transactional(readOnly = true)
     public List<SignalEnvelope> getPendingMessages(Long userId) {
-        return signalEnvelopeRepository.findByReceiver_IdAndStatus(userId, MessageStatus.PENDING);
+        return signalEnvelopeRepository.findByReceiver_IdAndStatus(userId, MessageStatus.PENDING.getValue());
     }
 }

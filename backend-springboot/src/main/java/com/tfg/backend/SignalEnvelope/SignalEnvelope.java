@@ -35,7 +35,6 @@ import jakarta.validation.constraints.AssertTrue;
 )
 @Check(constraints = "((conversation_type = 'DIRECT' AND one_to_one_chat_id IS NOT NULL AND group_chat_id IS NULL) OR (conversation_type = 'GROUP' AND group_chat_id IS NOT NULL AND one_to_one_chat_id IS NULL))")
 public class SignalEnvelope {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -63,9 +62,29 @@ public class SignalEnvelope {
         }
     }
 
+
     @Enumerated(EnumType.STRING)
     @Column(name = "conversation_type", nullable = false)
     private ConversationType conversationType;
+
+    public enum MessageStatus {
+        PENDING("PENDING"),
+        DELIVERED("DELIVERED");
+    
+        private final String value;
+
+        private MessageStatus(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+    }
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private MessageStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_chat_id")
@@ -110,6 +129,7 @@ public class SignalEnvelope {
         this.cypherTextType = cypherTextType;
         this.createdAt = LocalDateTime.now();
         this.conversationType = ConversationType.GROUP;
+        this.status = MessageStatus.PENDING;
     }
 
     public SignalEnvelope(User sender, User receiver, OneToOneChat oneToOneChat, byte[] cypherText, Short cypherTextType) {
@@ -120,13 +140,7 @@ public class SignalEnvelope {
         this.cypherTextType = cypherTextType;
         this.createdAt = LocalDateTime.now();
         this.conversationType = ConversationType.DIRECT;
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        if (this.createdAt == null) {
-            this.createdAt = LocalDateTime.now();
-        }
+        this.status = MessageStatus.PENDING;
     }
 
     @AssertTrue(message = "Inconsistent conversation type and chat relation")
@@ -218,5 +232,13 @@ public class SignalEnvelope {
 
     public void MarkAsRead() {
         this.readAt = LocalDateTime.now();
+    }
+
+    public MessageStatus getStatus(){
+        return status;
+    }
+
+    public void setValue(MessageStatus status){
+        this.status = status;
     }
 }

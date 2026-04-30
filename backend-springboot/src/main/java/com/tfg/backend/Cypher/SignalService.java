@@ -7,7 +7,6 @@ import java.util.Base64.Decoder;
 import java.util.Set;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -21,9 +20,6 @@ import com.tfg.backend.Cypher.dto.SignalBundleResponseDto;
 import com.tfg.backend.Cypher.dto.SignalOneTimePreKeyDto;
 import com.tfg.backend.Cypher.dto.SignalRefillRequestDto;
 import com.tfg.backend.Cypher.dto.SignalRefillResponseDto;
-import com.tfg.backend.OneToOneChat.OneToOneChat;
-import com.tfg.backend.OneToOneChat.OneToOneChatRepository;
-import com.tfg.backend.SignalEnvelope.SignalEnvelopeRepository;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserService;
 import com.tfg.backend.Cypher.Entity.SignalSignedPreKey;
@@ -45,14 +41,10 @@ public class SignalService {
 
     public SignalService(
             UserService userService,
-            OneToOneChat oneToOneChat,
             SignalAccountRepository signalAccountRepository,
             SignalKyberPreKeyRepository signalKyberPreKeyRepository,
             SignalSignedPreKeyRepository signalSignedPreKeyRepository,
-            SignalOneTimePreKeyRepository signalOneTimePreKeyRepository,
-            SignalEnvelopeRepository signalEnvelopeRepository,
-            OneToOneChatRepository oneToOneChatRepository,
-            SimpMessagingTemplate simpMessagingTemplate
+            SignalOneTimePreKeyRepository signalOneTimePreKeyRepository
             ) {
         this.userService = userService;
         this.signalAccountRepository = signalAccountRepository;
