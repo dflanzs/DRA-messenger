@@ -1,4 +1,4 @@
-package com.tfg.backend.Message;
+package com.tfg.backend.SignalEnvelope;
 
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -17,9 +17,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.tfg.backend.Cypher.dto.SignalDirectMessageRequestDto;
-import com.tfg.backend.Cypher.dto.SignalGroupMessageRequestDto;
 import com.tfg.backend.GroupChat.GroupChatService;
+import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageRequestDto;
+import com.tfg.backend.SignalEnvelope.dto.SignalGroupMessageRequestDto;
 import com.tfg.backend.TrustCircles.TrustCirclesService;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserService;
@@ -27,14 +27,14 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/messages")
-public class MessageController {
+public class SignalEnvelopeController {
 
-    private final MessageService messageService;
+    private final SignalEnvelopeService messageService;
     private final UserService userService;
     private final TrustCirclesService trustCirclesService;
 
-    public MessageController(
-            MessageService messageService,
+    public SignalEnvelopeController(
+            SignalEnvelopeService messageService,
             UserService userService,
             TrustCirclesService trustCirclesService
             ) {
@@ -67,4 +67,11 @@ public class MessageController {
 
 		messageService.sendPrivateMessage(sender.getId(), request);
 	}
+    
+    @GetMapping("/pending")
+    public List<SignalEnvelope> getPendingMessages(Principal principal) {
+        User user = userService.getByEmail(principal.getName());
+        return messageService.getPendingMessages(user.getId());
+    }
+    
 }

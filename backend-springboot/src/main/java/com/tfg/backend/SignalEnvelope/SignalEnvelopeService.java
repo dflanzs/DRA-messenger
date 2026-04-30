@@ -1,19 +1,16 @@
-package com.tfg.backend.Message;
+package com.tfg.backend.SignalEnvelope;
 
-import com.tfg.backend.Cypher.Entity.SignalEnvelope;
-import com.tfg.backend.Cypher.dto.SignalDirectMessageRequestDto;
-import com.tfg.backend.Cypher.dto.SignalDirectMessageResponseDto;
-import com.tfg.backend.Cypher.dto.SignalDirectMessageWSDto;
-import com.tfg.backend.Cypher.dto.SignalGroupMessageRequestDto;
-import com.tfg.backend.Cypher.dto.SignalGroupMessageResponseDto;
 import com.tfg.backend.GroupChat.GroupChat;
 import com.tfg.backend.GroupChat.GroupChatRepository;
 import com.tfg.backend.OneToOneChat.OneToOneChat;
 import com.tfg.backend.OneToOneChat.OneToOneChatRepository;
-import com.tfg.backend.TrustCircles.TrustCirclesService;
+import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageRequestDto;
+import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageResponseDto;
+import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageWSDto;
+import com.tfg.backend.SignalEnvelope.dto.SignalGroupMessageRequestDto;
+import com.tfg.backend.SignalEnvelope.dto.SignalGroupMessageResponseDto;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserRepository;
-import com.tfg.backend.Cypher.Repositories.SignalEnvelopeRepository;
 import com.tfg.backend.User.UserService;
 
 import java.time.LocalDateTime;
@@ -31,9 +28,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
-public class MessageService {
+public class SignalEnvelopeService {
+     public enum MessageStatus {
+        PENDING,
+        DELIVERED,
+        READ
+    }
 
-    private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final OneToOneChatRepository oneToOneChatRepository;
     private final SimpMessagingTemplate messagingTemplate;
@@ -41,20 +42,16 @@ public class MessageService {
     private final SignalEnvelopeRepository signalEnvelopeRepository;
     private final GroupChatRepository groupChatRepository;
 
-    public MessageService(
-        MessageRepository messageRepository,
+    public SignalEnvelopeService(
         UserRepository userRepository,
         OneToOneChatRepository oneToOneChatRepository,
-        TrustCirclesService trustCirclesService,
         SimpMessagingTemplate messagingTemplate,
         UserService userService,
         SignalEnvelopeRepository signalEnvelopeRepository,
         GroupChatRepository groupChatRepository
     ) {
-        this.messageRepository = messageRepository;
         this.userRepository = userRepository;
         this.oneToOneChatRepository = oneToOneChatRepository;
-        this.trustCirclesService = trustCirclesService;
         this.messagingTemplate = messagingTemplate;
         this.userService = userService;
         this.signalEnvelopeRepository = signalEnvelopeRepository;
@@ -62,12 +59,7 @@ public class MessageService {
     }
 
     @Transactional(readOnly = true)
-    public List<Message> list() {
-        return messageRepository.findAll();
-    }
-
-    @Transactional(readOnly = true)
-    public Message getById(Long id) {
+    public SignalEnvelope getById(Long id) {
         if (id == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Id inválido");
         }
@@ -172,5 +164,10 @@ public class MessageService {
         messagingTemplate.convertAndSendToUser(recipient.getEmail(), "/queue/signal-messages", wsMessage);
 
         return new SignalDirectMessageResponseDto(signalEnvelope.getId(), signalEnvelope.getCreatedAt());
+    }
+
+    @Transactional(readOnly = true)
+    public List<SignalEnvelope> getPendingMessages(Long userId) {
+        return messageRepository.findByReceiver_IdAndStatus(userId, MessageStatus.PENDING);
     }
 }

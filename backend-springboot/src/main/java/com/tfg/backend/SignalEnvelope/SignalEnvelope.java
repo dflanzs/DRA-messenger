@@ -1,4 +1,4 @@
-package com.tfg.backend.Cypher.Entity;
+package com.tfg.backend.SignalEnvelope;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

@@ -1,4 +1,4 @@
-package com.tfg.backend.Cypher.dto;
+package com.tfg.backend.SignalEnvelope.dto;
 
 import java.time.LocalDateTime;
 import java.util.List;

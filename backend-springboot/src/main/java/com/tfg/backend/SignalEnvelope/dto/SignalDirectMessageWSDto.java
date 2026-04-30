@@ -1,8 +1,8 @@
-package com.tfg.backend.Cypher.dto;
+package com.tfg.backend.SignalEnvelope.dto;
 
 import java.time.LocalDateTime;
 
-import com.tfg.backend.Cypher.Entity.SignalEnvelope;
+import com.tfg.backend.SignalEnvelope.SignalEnvelope;
 
 public class SignalDirectMessageWSDto {
     private final Long envelopeId;

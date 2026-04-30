@@ -1,8 +1,8 @@
 package com.tfg.backend.OneToOneChat;
 
-import com.tfg.backend.Message.Message;
-import com.tfg.backend.Message.MessageRepository;
-import com.tfg.backend.Message.dto.SendMessageDTO;
+import com.tfg.backend.SignalEnvelope.Message;
+import com.tfg.backend.SignalEnvelope.MessageRepository;
+import com.tfg.backend.SignalEnvelope.dto.SendMessageDTO;
 import com.tfg.backend.TrustCircles.TrustCirclesService;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserRepository;

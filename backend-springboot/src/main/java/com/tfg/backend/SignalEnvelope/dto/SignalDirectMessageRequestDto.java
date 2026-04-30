@@ -1,14 +1,14 @@
-package com.tfg.backend.Cypher.dto;
+package com.tfg.backend.SignalEnvelope.dto;
 
 import jakarta.validation.constraints.NotNull;
 
-public class SignalGroupMessageRequestDto {
+public class SignalDirectMessageRequestDto {
     @NotNull
     private  Long recipientUserId;
 
     // Equivalent to OneToOneChat
     @NotNull
-    private  Long groupChatId;
+    private  Long conversationId;
 
     @NotNull
     private  Short cypherTextType;
@@ -16,15 +16,15 @@ public class SignalGroupMessageRequestDto {
     @NotNull
     private String cypherTextB64;
 
-    public SignalGroupMessageRequestDto() {
+    public SignalDirectMessageRequestDto() {
     }
 
     public Long getRecipientUserId() {
         return recipientUserId;
     }
 
-    public Long getGroupChatId() {
-        return groupChatId;
+    public Long getConversationId() {
+        return conversationId;
     }
 
     public Short getCypherTextType() {

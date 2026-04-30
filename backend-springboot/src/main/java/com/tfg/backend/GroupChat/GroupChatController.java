@@ -1,6 +1,6 @@
 package com.tfg.backend.GroupChat;
 
-import com.tfg.backend.Cypher.dto.SignalGroupMessageRequestDto;
+import com.tfg.backend.SignalEnvelope.dto.SignalGroupMessageRequestDto;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserService;
 

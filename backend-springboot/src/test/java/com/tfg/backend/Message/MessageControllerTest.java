@@ -3,6 +3,8 @@ package com.tfg.backend.Message;
 import com.tfg.backend.OneToOneChat.OneToOneChat;
 import com.tfg.backend.Security.CustomUserDetailsService;
 import com.tfg.backend.Security.JwtAuthenticationFilter;
+import com.tfg.backend.SignalEnvelope.SignalEnvelopeController;
+import com.tfg.backend.SignalEnvelope.SignalEnvelopeService;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserService;
 import org.junit.jupiter.api.Test;
@@ -26,7 +28,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(MessageController.class)
+@WebMvcTest(SignalEnvelopeController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class MessageControllerTest {
 
@@ -34,7 +36,7 @@ class MessageControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private MessageService messageService;
+    private SignalEnvelopeService messageService;
 
     @MockitoBean
     private UserService userService;

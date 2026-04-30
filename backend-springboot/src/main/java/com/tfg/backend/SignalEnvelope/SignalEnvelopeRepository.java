@@ -1,8 +1,6 @@
-package com.tfg.backend.Cypher.Repositories;
+package com.tfg.backend.SignalEnvelope;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-
-import com.tfg.backend.Cypher.Entity.SignalEnvelope;
 
 public interface SignalEnvelopeRepository extends JpaRepository<SignalEnvelope, Long> {
     
