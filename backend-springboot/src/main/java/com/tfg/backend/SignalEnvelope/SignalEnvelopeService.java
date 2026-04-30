@@ -64,7 +64,7 @@ public class SignalEnvelopeService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Id inválido");
         }
 
-        return messageRepository.findById(id)
+        return signalEnvelopeRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mensaje no encontrado"));
     }
 
@@ -168,6 +168,6 @@ public class SignalEnvelopeService {
 
     @Transactional(readOnly = true)
     public List<SignalEnvelope> getPendingMessages(Long userId) {
-        return messageRepository.findByReceiver_IdAndStatus(userId, MessageStatus.PENDING);
+        return signalEnvelopeRepository.findByReceiver_IdAndStatus(userId, MessageStatus.PENDING);
     }
 }

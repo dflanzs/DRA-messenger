@@ -1,11 +1,8 @@
 package com.tfg.backend.Cypher;
 
-import java.beans.Encoder;
 import java.time.LocalDateTime;
-import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Base64.Decoder;
 import java.util.Set;
 
@@ -26,11 +23,7 @@ import com.tfg.backend.Cypher.dto.SignalRefillRequestDto;
 import com.tfg.backend.Cypher.dto.SignalRefillResponseDto;
 import com.tfg.backend.OneToOneChat.OneToOneChat;
 import com.tfg.backend.OneToOneChat.OneToOneChatRepository;
-import com.tfg.backend.SignalEnvelope.SignalEnvelope;
 import com.tfg.backend.SignalEnvelope.SignalEnvelopeRepository;
-import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageRequestDto;
-import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageResponseDto;
-import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageWSDto;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserService;
 import com.tfg.backend.Cypher.Entity.SignalSignedPreKey;
@@ -44,15 +37,11 @@ import jakarta.transaction.Transactional;
 public class SignalService {
 
     private final UserService userService;
-    private final OneToOneChat oneToOneChat;
 
     private final SignalAccountRepository signalAccountRepository;
     private final SignalKyberPreKeyRepository signalKyberPreKeyRepository;
     private final SignalSignedPreKeyRepository signalSignedPreKeyRepository;
     private final SignalOneTimePreKeyRepository signalOneTimePreKeyRepository;
-    private final SignalEnvelopeRepository signalEnvelopeRepository;
-    private final OneToOneChatRepository oneToOneChatRepository;
-    private final SimpMessagingTemplate simpMessagingTemplate;
 
     public SignalService(
             UserService userService,
@@ -66,14 +55,10 @@ public class SignalService {
             SimpMessagingTemplate simpMessagingTemplate
             ) {
         this.userService = userService;
-        this.oneToOneChat = oneToOneChat;
         this.signalAccountRepository = signalAccountRepository;
         this.signalKyberPreKeyRepository = signalKyberPreKeyRepository;
         this.signalSignedPreKeyRepository = signalSignedPreKeyRepository;
         this.signalOneTimePreKeyRepository = signalOneTimePreKeyRepository;
-        this.signalEnvelopeRepository = signalEnvelopeRepository;
-        this.oneToOneChatRepository = oneToOneChatRepository;
-        this.simpMessagingTemplate = simpMessagingTemplate;
     }
 
     @Transactional
