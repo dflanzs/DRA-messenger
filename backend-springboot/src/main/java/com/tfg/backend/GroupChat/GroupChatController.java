@@ -1,9 +1,12 @@
 package com.tfg.backend.GroupChat;
 
-import com.tfg.backend.Message.dto.SendMessageDTO;
+import com.tfg.backend.Cypher.dto.SignalGroupMessageRequestDto;
+import com.tfg.backend.User.User;
+import com.tfg.backend.User.UserService;
+
+import java.security.Principal;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,21 +23,26 @@ public class GroupChatController {
 
     private final GroupChatService groupChatService;
     private final GroupChatRepository groupChatRepository;
+    private final UserService userService;
 
-    public GroupChatController(GroupChatService groupChatService,
-                               GroupChatRepository groupChatRepository) {
+    public GroupChatController(
+            GroupChatService groupChatService,
+            GroupChatRepository groupChatRepository,
+            UserService userService 
+    ) {
         this.groupChatService = groupChatService;
         this.groupChatRepository = groupChatRepository;
+        this.userService = userService;
     }
 
-    /**
-     * Envía un mensaje a un grupo
-     * Cliente: stompClient.send("/app/group-message", {}, JSON.stringify({senderId, groupChatId, content}))
-     */
     @MessageMapping("/group-message")
-    public void sendGroupMessage(@Payload SendMessageDTO messageDTO,
-                                 SimpMessageHeaderAccessor headerAccessor) {
-        groupChatService.sendGroupMessage(messageDTO, headerAccessor.getUser());
+    public void sendGroupMessage(
+            @Payload SignalGroupMessageRequestDto messageDTO,
+            Principal principal
+    ) {
+        User sender = userService.getByEmail(principal.getName());
+
+        groupChatService.sendGroupMessage(sender.getId(), messageDTO);
     }
 
     @ResponseBody
