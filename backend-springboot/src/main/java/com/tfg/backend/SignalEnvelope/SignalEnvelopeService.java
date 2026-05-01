@@ -167,7 +167,7 @@ public class SignalEnvelopeService {
     public List<SignalMessageWSDto> getPendingMessages(Long userId) {
         List<SignalEnvelope> pendingMessages = signalEnvelopeRepository.findByReceiver_IdAndStatus(userId, MessageStatus.PENDING.getValue());
 
-        List<SignalMessageWSDto> response = new ArrayList<>();
+        List<ignalMessageWSDto> response = new ArrayList<>();
 
         for (SignalEnvelope envelope : pendingMessages) {
             if (envelope.getConversationType() == SignalEnvelope.ConversationType.GROUP.getValue()) {
@@ -208,8 +208,7 @@ public class SignalEnvelopeService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado para reconocer este mensaje");
         }
 
-        // Group messages are onw envelope per user so we can directly set to delivered
-        envelope.setStatus(SignalEnvelope.MessageStatus.DELIVERED);
-        signalEnvelopeRepository.save(envelope);
+        // Group messages are one envelope per user so we can directly remove them from server. Status on sender will be shown as delivered if envelope is no longer on the server
+        signalEnvelopeRepository.delete(envelope);
     }
 }
