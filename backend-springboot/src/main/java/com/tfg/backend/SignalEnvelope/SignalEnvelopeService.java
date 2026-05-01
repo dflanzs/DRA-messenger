@@ -198,4 +198,18 @@ public class SignalEnvelopeService {
         }
         return response;
     }
+
+    @Transactional
+    public void acknowledgeMessageDelivered(Long envelopeId, Long userId) {
+        SignalEnvelope envelope = signalEnvelopeRepository.findById(envelopeId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mensaje no encontrado"));
+
+        if (!envelope.getReceiver().getId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado para reconocer este mensaje");
+        }
+
+        // Group messages are onw envelope per user so we can directly set to delivered
+        envelope.setStatus(SignalEnvelope.MessageStatus.DELIVERED);
+        signalEnvelopeRepository.save(envelope);
+    }
 }

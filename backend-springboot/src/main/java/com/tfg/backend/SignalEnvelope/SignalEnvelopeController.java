@@ -6,6 +6,8 @@ import java.util.List;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -71,5 +73,18 @@ public class SignalEnvelopeController {
         }
 
         return messageService.getPendingMessages(user.getId());
+    }
+
+    @PostMapping("/{envelopeId}/ack-delivered")
+    public void acknowledgeMessageDelivered(
+            @PathVariable Long envelopeId,
+            Principal principal
+    ) {
+        User user = userService.getByEmail(principal.getName());
+        if (user == null) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED, "User not found");
+        }
+
+        messageService.acknowledgeMessageDelivered(envelopeId, user.getId());
     }
 }

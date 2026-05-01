@@ -237,7 +237,7 @@ public class SignalEnvelope {
         return status;
     }
 
-    public void setValue(MessageStatus status){
+    public void setStatus(MessageStatus status){
         this.status = status;
     }
 }
