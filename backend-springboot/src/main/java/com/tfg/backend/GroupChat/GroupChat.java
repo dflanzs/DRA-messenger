@@ -1,6 +1,9 @@
 package com.tfg.backend.GroupChat;
 
 import java.time.LocalDateTime;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.HashSet;
 
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -14,14 +17,14 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "one_to_one_chats")
+@Table(name = "group_chats")
 public class GroupChat {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToMany
-    private User[] users;
+    private Set<User> users = new HashSet<>();
 
     @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
@@ -36,11 +39,9 @@ public class GroupChat {
         return id;
     }
 
-    public Long[] getUserIds() {
-        Long[] userIds = new Long[users.length];
-        for (int i = 0; i < users.length; i++) {
-            userIds[i] = users[i].getId();
-        }
-        return userIds;
+      public Set<Long> getUserIds() {
+        return users.stream()
+                .map(User::getId)
+                .collect(Collectors.toSet());
     }
 }

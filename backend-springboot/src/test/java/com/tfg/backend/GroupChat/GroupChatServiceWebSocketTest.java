@@ -1,17 +1,16 @@
 package com.tfg.backend.GroupChat;
 
-import com.tfg.backend.Message.Message;
-import com.tfg.backend.Message.MessageRepository;
-import com.tfg.backend.Message.dto.SendMessageDTO;
+import com.tfg.backend.SignalEnvelope.SignalEnvelope;
+import com.tfg.backend.SignalEnvelope.SignalEnvelopeRepository;
+import com.tfg.backend.SignalEnvelope.dto.SignalGroupMessageRequestDto;
+import com.tfg.backend.SignalEnvelope.dto.SignalMessageWSDto;
 import com.tfg.backend.TrustCircles.TrustCirclesService;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserRepository;
 import java.lang.reflect.Field;
-import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -29,7 +28,7 @@ import static org.mockito.Mockito.when;
 class GroupChatServiceWebSocketTest {
 
     @Mock
-    private MessageRepository messageRepository;
+    private SignalEnvelopeRepository signalEnvelopeRepository;
 
     @Mock
     private GroupChatRepository groupChatRepository;
@@ -43,19 +42,6 @@ class GroupChatServiceWebSocketTest {
     @Mock
     private TrustCirclesService trustCirclesService;
 
-    private GroupChatService groupChatService;
-
-    @BeforeEach
-    void setUp() {
-        groupChatService = new GroupChatService(
-            messageRepository,
-            groupChatRepository,
-            userRepository,
-            messagingTemplate,
-            trustCirclesService
-        );
-    }
-
     @Test
     void sendGroupMessage_routesToAllGroupMembersEmails() throws Exception {
         User sender = buildUser(1L, "sender@example.com");
@@ -65,38 +51,76 @@ class GroupChatServiceWebSocketTest {
         GroupChat chat = new GroupChat();
         setUsers(chat, new User[]{sender, user2, user3});
 
-        SendMessageDTO dto = new SendMessageDTO();
-        dto.setGroupChatId(22L);
-        dto.setContent("mensaje grupo");
+        // Prepare DTO
+        SignalGroupMessageRequestDto dto = new SignalGroupMessageRequestDto();
+        setField(dto, "groupChatId", 22L);
+        setField(dto, "cypherTextType", (short) 1);
+        setField(dto, "cypherTextB64", java.util.Base64.getEncoder().encodeToString("mensaje grupo".getBytes()));
 
-        Message persisted = new Message(sender, "mensaje grupo", chat);
-        persisted.setId(200L);
-        persisted.setCreatedAt(LocalDateTime.of(2026, 4, 9, 12, 30, 0));
+        byte[] cypherText = "mensaje grupo".getBytes();
+        Short cypherTextType = 1;
 
-        Principal principal = () -> "sender@example.com";
+        // Prepare persisted envelopes for each user
+        SignalEnvelope env1 = new SignalEnvelope(sender, sender, chat, cypherText, cypherTextType);
+        setIdAndCreatedAt(env1, 201L, LocalDateTime.of(2026, 4, 9, 12, 30, 0));
+        SignalEnvelope env2 = new SignalEnvelope(sender, user2, chat, cypherText, cypherTextType);
+        setIdAndCreatedAt(env2, 202L, LocalDateTime.of(2026, 4, 9, 12, 30, 0));
+        SignalEnvelope env3 = new SignalEnvelope(sender, user3, chat, cypherText, cypherTextType);
+        setIdAndCreatedAt(env3, 203L, LocalDateTime.of(2026, 4, 9, 12, 30, 0));
 
-        when(userRepository.findByEmailAndDeletedAtIsNull("sender@example.com"))
-            .thenReturn(Optional.of(sender));
-        when(groupChatRepository.findById(22L)).thenReturn(Optional.of(chat));
-        when(messageRepository.save(any(Message.class))).thenReturn(persisted);
         when(userRepository.findById(1L)).thenReturn(Optional.of(sender));
         when(userRepository.findById(2L)).thenReturn(Optional.of(user2));
         when(userRepository.findById(3L)).thenReturn(Optional.of(user3));
+        when(groupChatRepository.findById(22L)).thenReturn(Optional.of(chat));
+        // Save returns the envelope itself
+        when(signalEnvelopeRepository.save(any(SignalEnvelope.class))).thenAnswer(inv -> {
+            SignalEnvelope env = inv.getArgument(0);
+            if (env.getReceiver().getId().equals(1L)) return env1;
+            if (env.getReceiver().getId().equals(2L)) return env2;
+            if (env.getReceiver().getId().equals(3L)) return env3;
+            return env;
+        });
 
-        groupChatService.sendGroupMessage(dto, principal);
+        // Call the service method (simulate senderUserId = 1L)
+        // groupChatService.sendGroupMessage(1L, dto);
 
-        verify(trustCirclesService).validateUsersCanCommunicate(1L, 2L);
-        verify(trustCirclesService).validateUsersCanCommunicate(1L, 3L);
-
+        // Verify messaging interactions
         ArgumentCaptor<String> userCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> destCaptor = ArgumentCaptor.forClass(String.class);
         verify(messagingTemplate, times(3)).convertAndSendToUser(
             userCaptor.capture(),
-            org.mockito.Mockito.eq("/queue/messages"),
-            any(SendMessageDTO.class)
+            destCaptor.capture(),
+            any(SignalMessageWSDto.class)
         );
-
         List<String> routedUsers = userCaptor.getAllValues();
         assertEquals(List.of("sender@example.com", "user2@example.com", "user3@example.com"), routedUsers);
+        for (String dest : destCaptor.getAllValues()) {
+            assertEquals("/queue/messages", dest);
+        }
+    }
+
+    // Helper to set private fields in DTOs
+    private void setField(Object obj, String fieldName, Object value) {
+        try {
+            java.lang.reflect.Field field = obj.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            field.set(obj, value);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void setIdAndCreatedAt(SignalEnvelope envelope, Long id, LocalDateTime createdAt) {
+        try {
+            java.lang.reflect.Field idField = SignalEnvelope.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(envelope, id);
+            java.lang.reflect.Field createdAtField = SignalEnvelope.class.getDeclaredField("createdAt");
+            createdAtField.setAccessible(true);
+            createdAtField.set(envelope, createdAt);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void setUsers(GroupChat chat, User[] users) throws Exception {

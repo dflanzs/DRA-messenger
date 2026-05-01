@@ -34,6 +34,7 @@ public class AuthorizationService {
 
         return currentUser.getId().equals(userId);
     }
+
     public boolean isSelfOrAdmin(Authentication authentication, Long userId) {
         return isAdmin(authentication) || isSelf(authentication, userId);
     }
