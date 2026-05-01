@@ -4,21 +4,21 @@ import java.time.LocalDateTime;
 
 import com.tfg.backend.SignalEnvelope.SignalEnvelope;
 
-public class SignalDirectMessageWSDto {
+public class SignalMessageWSDto {
     private final Long envelopeId;
     private final SignalEnvelope envelope; 
     private final Long senderUserId;
-    private final Long oneToOneChatId;
+    private final Long conversationId;
     private final String conversationType; 
     private final Short cypherTextType;
     private final String cypherTextB64;
     private final LocalDateTime createdAt;
 
-    public SignalDirectMessageWSDto(
+    public SignalMessageWSDto(
         Long envelopeId,
         SignalEnvelope envelope,
         Long senderUserId,
-        Long oneToOneChatId,
+        Long conversationId,
         String conversationType,
         Short cypherTextType,
         String cypherTextB64,
@@ -27,7 +27,7 @@ public class SignalDirectMessageWSDto {
         this.envelopeId = envelopeId;
         this.envelope = envelope;
         this.senderUserId = senderUserId;
-        this.oneToOneChatId = oneToOneChatId;
+        this.conversationId = conversationId;
         this.conversationType = conversationType;
         this.cypherTextType = cypherTextType;
         this.cypherTextB64 = cypherTextB64;
@@ -46,8 +46,8 @@ public class SignalDirectMessageWSDto {
         return senderUserId;
     }
 
-    public Long getOneToOneChatId() {
-        return oneToOneChatId;
+    public Long getConversationId() {
+        return conversationId;
     }
 
     public String getConversationType() {

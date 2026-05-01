@@ -3,7 +3,7 @@ package com.tfg.backend.GroupChat;
 import com.tfg.backend.SignalEnvelope.SignalEnvelope;
 import com.tfg.backend.SignalEnvelope.SignalEnvelopeRepository;
 import com.tfg.backend.SignalEnvelope.dto.SignalGroupMessageRequestDto;
-import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageWSDto;
+import com.tfg.backend.SignalEnvelope.dto.SignalMessageWSDto;
 import com.tfg.backend.TrustCircles.TrustCirclesService;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserRepository;
@@ -90,7 +90,7 @@ class GroupChatServiceWebSocketTest {
         verify(messagingTemplate, times(3)).convertAndSendToUser(
             userCaptor.capture(),
             destCaptor.capture(),
-            any(SignalDirectMessageWSDto.class)
+            any(SignalMessageWSDto.class)
         );
         List<String> routedUsers = userCaptor.getAllValues();
         assertEquals(List.of("sender@example.com", "user2@example.com", "user3@example.com"), routedUsers);
