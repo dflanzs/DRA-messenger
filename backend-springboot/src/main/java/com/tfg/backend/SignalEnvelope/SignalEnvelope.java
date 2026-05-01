@@ -22,7 +22,6 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.AssertTrue;
 
@@ -202,7 +201,7 @@ public class SignalEnvelope {
         this.cypherText = cypherText;
     }
 
-    public int getCypherTextType() {
+    public short getCypherTextType() {
         return this.cypherTextType;
     }
 
