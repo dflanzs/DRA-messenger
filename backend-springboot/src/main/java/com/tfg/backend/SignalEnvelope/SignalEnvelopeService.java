@@ -7,7 +7,7 @@ import com.tfg.backend.OneToOneChat.OneToOneChatRepository;
 import com.tfg.backend.SignalEnvelope.SignalEnvelope.MessageStatus;
 import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageRequestDto;
 import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageResponseDto;
-import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageWSDto;
+import com.tfg.backend.SignalEnvelope.dto.SignalMessageWSDto;
 import com.tfg.backend.SignalEnvelope.dto.SignalGroupMessageRequestDto;
 import com.tfg.backend.SignalEnvelope.dto.SignalGroupMessageResponseDto;
 import com.tfg.backend.User.User;
@@ -96,7 +96,7 @@ public class SignalEnvelopeService {
             }
 
             // Send message through WebSocket to recipient
-            SignalDirectMessageWSDto wsMessage = new SignalDirectMessageWSDto(
+            SignalMessageWSDto wsMessage = new SignalMessageWSDto(
                     signalEnvelope.getId(),
                     signalEnvelope,
                     signalEnvelope.getSender().getId(),
@@ -147,7 +147,7 @@ public class SignalEnvelopeService {
         }
 
         // Send message through WebSocket to recipient
-        SignalDirectMessageWSDto wsMessage = new SignalDirectMessageWSDto(
+        SignalMessageWSDto wsMessage = new SignalMessageWSDto(
                     signalEnvelope.getId(),
                     signalEnvelope,
                     signalEnvelope.getSender().getId(),
@@ -164,7 +164,38 @@ public class SignalEnvelopeService {
     }
 
     @Transactional(readOnly = true)
-    public List<SignalEnvelope> getPendingMessages(Long userId) {
-        return signalEnvelopeRepository.findByReceiver_IdAndStatus(userId, MessageStatus.PENDING.getValue());
+    public List<SignalMessageWSDto> getPendingMessages(Long userId) {
+        List<SignalEnvelope> pendingMessages = signalEnvelopeRepository.findByReceiver_IdAndStatus(userId, MessageStatus.PENDING.getValue());
+
+        List<SignalMessageWSDto> response = new ArrayList<>();
+
+        for (SignalEnvelope envelope : pendingMessages) {
+            if (envelope.getConversationType() == SignalEnvelope.ConversationType.GROUP.getValue()) {
+                response.add(
+                        new SignalMessageWSDto(
+                            envelope.getId(),
+                            envelope,
+                            envelope.getSender().getId(),
+                            envelope.getGroupChat().getId(),
+                            envelope.getConversationType(),
+                            envelope.getCypherTextType(),
+                            Base64.getEncoder().encodeToString(envelope.getCypherText()),
+                            envelope.getCreatedAt()
+                        ));
+            } else if (envelope.getConversationType() == SignalEnvelope.ConversationType.DIRECT.getValue()) {
+                response.add(
+                        new SignalMessageWSDto(
+                            envelope.getId(),
+                            envelope,
+                            envelope.getSender().getId(),
+                            envelope.getOneToOneChat().getId(),
+                            envelope.getConversationType(),
+                            envelope.getCypherTextType(),
+                            Base64.getEncoder().encodeToString(envelope.getCypherText()),
+                            envelope.getCreatedAt()
+                        ));
+            }
+        }
+        return response;
     }
 }
