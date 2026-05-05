@@ -1,21 +1,25 @@
+@file:Suppress("unused")
+
 package com.example.mobile_app.domain.usecase
 
 import com.example.mobile_app.data.model.auth.AuthResponseDto
+import com.example.mobile_app.data.model.auth.MessageResponseDto
+import com.example.mobile_app.data.model.auth.VerifyEmailResponseDto
 import com.example.mobile_app.data.repository.AuthRepository
 import com.example.mobile_app.security.TokenManager
 
 class RegisterUseCase(
     private val repository: AuthRepository,
 ) {
-    suspend operator fun invoke(name: String, email: String, password: String) {
-        repository.register(name, email, password)
+    suspend operator fun invoke(name: String, email: String, password: String): MessageResponseDto {
+        return repository.register(name, email, password)
     }
 }
 
 class VerifyEmailUseCase(
     private val repository: AuthRepository,
 ) {
-    suspend operator fun invoke(token: String): AuthResponseDto {
+    suspend operator fun invoke(token: String): VerifyEmailResponseDto {
         return repository.verifyEmail(token)
     }
 }
@@ -36,7 +40,9 @@ class LogoutUseCase(
     private val tokenManager: TokenManager,
 ) {
     suspend operator fun invoke() {
-        repository.logout()
+        runCatching {
+            repository.logout()
+        }
         tokenManager.clearToken()
     }
 }
