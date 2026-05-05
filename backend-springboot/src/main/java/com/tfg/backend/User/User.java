@@ -49,6 +49,7 @@ public class User {
 	@Column(nullable = false)
 	private UserRole role = UserRole.USER;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
 	private boolean onlineStatus;
 
 	@Column(nullable = false, columnDefinition = "boolean default false")
