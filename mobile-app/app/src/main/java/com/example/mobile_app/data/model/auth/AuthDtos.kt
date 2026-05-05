@@ -20,11 +20,16 @@ data class AuthResponseDto(
     val user: UserResponseDto,
 )
 
+data class VerifyEmailResponseDto(
+    val message: String,
+    val user: UserResponseDto,
+)
+
 data class UserResponseDto(
     val id: Long,
     val name: String,
     val email: String,
-    val publicKey: String?,
+    val publicKey: String,
     val onlineStatus: Boolean,
     val role: String,
     val createdAt: String,
