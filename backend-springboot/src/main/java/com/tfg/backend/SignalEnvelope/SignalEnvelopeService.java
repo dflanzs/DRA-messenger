@@ -167,7 +167,7 @@ public class SignalEnvelopeService {
     public List<SignalMessageWSDto> getPendingMessages(Long userId) {
         List<SignalEnvelope> pendingMessages = signalEnvelopeRepository.findByReceiver_IdAndStatus(userId, MessageStatus.PENDING.getValue());
 
-        List<ignalMessageWSDto> response = new ArrayList<>();
+        List<SignalMessageWSDto> response = new ArrayList<>();
 
         for (SignalEnvelope envelope : pendingMessages) {
             if (envelope.getConversationType() == SignalEnvelope.ConversationType.GROUP.getValue()) {
