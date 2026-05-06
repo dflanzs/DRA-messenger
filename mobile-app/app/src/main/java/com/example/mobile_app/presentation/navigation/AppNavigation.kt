@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.runtime.rememberCoroutineScope
 import com.example.mobile_app.presentation.auth.rememberAuthCoordinator
+import com.example.mobile_app.presentation.signal.rememberSignalCoordinator
 import com.example.mobile_app.presentation.screens.HomeScreen
 import com.example.mobile_app.presentation.screens.LoginScreen
 import com.example.mobile_app.presentation.screens.RegisterScreen
@@ -23,6 +24,7 @@ private object Routes {
 @Composable
 fun AppNavigation(navController: NavHostController = rememberNavController()) {
     val authCoordinator = rememberAuthCoordinator()
+    val signalCoordinator = rememberSignalCoordinator()
     val scope = rememberCoroutineScope()
 
     NavHost(
@@ -66,6 +68,7 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
         }
         composable(Routes.Home) {
             HomeScreen(
+                signalCoordinator = signalCoordinator,
                 onLogout = {
                     scope.launch {
                         runCatching {
