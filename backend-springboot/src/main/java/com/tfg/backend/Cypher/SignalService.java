@@ -124,9 +124,7 @@ public class SignalService {
         }
 
         for (SignalOneTimePreKey userOneTimePreKey : signalOneTimePreKeyRepository.getByUserId(userId)) {
-            userOneTimePreKey.SetConsumedAt(LocalDateTime.now());
-            signalOneTimePreKeyRepository.save(userOneTimePreKey);
-            
+            // Mark existing one-time pre-keys as consumed
             if (userOneTimePreKey != null) {
                 userOneTimePreKey.SetConsumedAt(LocalDateTime.now());
                 signalOneTimePreKeyRepository.save(userOneTimePreKey);
@@ -134,22 +132,23 @@ public class SignalService {
         }
 
         // Create new keys
+        // Create and persist new signed pre-key and kyber pre-key, capture managed instances
         SignalSignedPreKey newSignedPreKey = new SignalSignedPreKey();
         newSignedPreKey.SetPublicKey(signedPreKeyPublicBytes);
         newSignedPreKey.SetSignature(signedPreKeySignatureBytes);
         newSignedPreKey.SetUser(userAccount.GetUser());
-        signalSignedPreKeyRepository.save(newSignedPreKey);
+        SignalSignedPreKey savedSignedPreKey = signalSignedPreKeyRepository.save(newSignedPreKey);
 
         SignalKyberPreKey newKyberPreKey = new SignalKyberPreKey();
         newKyberPreKey.SetPublicKey(kyberPreKeyPublicBytes);
         newKyberPreKey.SetSignature(kyberPreKeySignatureBytes);
         newKyberPreKey.SetUser(userAccount.GetUser());
-        signalKyberPreKeyRepository.save(newKyberPreKey);
+        SignalKyberPreKey savedKyberPreKey = signalKyberPreKeyRepository.save(newKyberPreKey);
 
-        // Update account with new keys
+        // Update account with new keys using the managed instances returned by save
         userAccount.SetRegistrationId(registrationId);
-        userAccount.SetActiveSignedPreKey(newSignedPreKey);
-        userAccount.SetActiveKyberPreKey(newKyberPreKey);
+        userAccount.SetActiveSignedPreKey(savedSignedPreKey);
+        userAccount.SetActiveKyberPreKey(savedKyberPreKey);
         userAccount.SetActiveIdentityKeyPublic(identityKeyPublicBytes);
         signalAccountRepository.save(userAccount);
 
