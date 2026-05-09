@@ -14,4 +14,16 @@ public class SignalBootstrapResponseDto {
         this.activeKyberPreKeyId = activeKyberPreKeyId;
         this.oneTimePreKeysStored = oneTimePreKeysStored;
     }
+
+    public int getActiveSignedPreKeyId() {
+        return activeSignedPreKeyId;
+    }
+
+    public int getActiveKyberPreKeyId() {
+        return activeKyberPreKeyId;
+    }
+
+    public int getOneTimePreKeysStored() {
+        return oneTimePreKeysStored;
+    }
 }
