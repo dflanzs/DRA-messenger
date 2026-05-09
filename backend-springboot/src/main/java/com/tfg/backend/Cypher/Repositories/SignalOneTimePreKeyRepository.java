@@ -14,4 +14,7 @@ public interface SignalOneTimePreKeyRepository extends JpaRepository<SignalOneTi
 
     @Query("SELECT s FROM SignalOneTimePreKey s WHERE s.user.id = :userId AND s.consumedAt IS NULL ORDER BY s.uploadedAt ASC")
     SignalOneTimePreKey getUnconsumedPreKeyByUserId(Long userId);
+
+    @Query("SELECT s FROM SignalOneTimePreKey s WHERE s.user.id = :userId AND s.preKeyId = :preKeyId")
+    SignalOneTimePreKey findByUserIdAndPreKeyId(Long userId, int preKeyId);
 }
