@@ -40,9 +40,14 @@ fun HomeScreen(
             bootstrapError = null
             scope.launch {
                 runCatching {
-                    signalCoordinator.bootstrapSignalKeysUseCase()
+                    // Check if bootstrap was already completed
+                    if (signalCoordinator.signalStore.isBootstrapCompleted()) {
+                        bootstrapSuccess = true
+                    } else {
+                        signalCoordinator.bootstrapSignalKeysUseCase()
+                        bootstrapSuccess = true
+                    }
                 }.onSuccess {
-                    bootstrapSuccess = true
                     isBootstrappingKeys = false
                 }.onFailure { throwable ->
                     bootstrapError = throwable.toAuthUserMessage("No se pudo hacer bootstrap de claves Signal.")

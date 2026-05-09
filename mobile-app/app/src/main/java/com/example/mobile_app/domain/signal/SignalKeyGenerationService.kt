@@ -10,6 +10,10 @@ class SignalKeyGenerationService(
     private val signalStore: SignalStore,
 ) {
 
+    /**
+     * Generate bootstrap request using stored keys if available, or create new ones.
+     * This ensures keys are not regenerated on each app restart.
+     */
     suspend fun generateAndBootstrap(): SignalBootstrapRequestDto {
         val material = signalStore.loadOrCreateBootstrapMaterial()
 
@@ -37,6 +41,12 @@ class SignalKeyGenerationService(
             activeKyberPreKeyId = response.activeKyberPreKeyId,
             oneTimePreKeysStored = response.oneTimePreKeysStored,
         )
+        signalStore.markBootstrapCompleted()
+        // Update the last one-time prekey ID to track which IDs we've already sent
+        if (response.oneTimePreKeysStored > 0) {
+            val lastId = signalStore.getLastOneTimePreKeyId() + response.oneTimePreKeysStored
+            signalStore.updateLastOneTimePreKeyId(lastId)
+        }
     }
 
     private fun ByteArray.b64(): String = android.util.Base64.encodeToString(this, android.util.Base64.NO_WRAP)

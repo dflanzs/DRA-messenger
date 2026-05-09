@@ -31,6 +31,7 @@ private val ACTIVE_SIGNED_PRE_KEY_ID_KEY = intPreferencesKey("active_signed_pre_
 private val ACTIVE_KYBER_PRE_KEY_ID_KEY = intPreferencesKey("active_kyber_pre_key_id")
 private val ONE_TIME_PRE_KEYS_STORED_KEY = intPreferencesKey("one_time_pre_keys_stored")
 private val LAST_ONE_TIME_PRE_KEY_ID_KEY = intPreferencesKey("last_one_time_pre_key_id")
+private val BOOTSTRAP_COMPLETED_KEY = androidx.datastore.preferences.core.booleanPreferencesKey("bootstrap_completed")
 
 class SignalStore(
     private val context: Context,
@@ -116,6 +117,17 @@ class SignalStore(
             prefs[ACTIVE_KYBER_PRE_KEY_ID_KEY] = activeKyberPreKeyId
             prefs[ONE_TIME_PRE_KEYS_STORED_KEY] = oneTimePreKeysStored
         }
+    }
+
+    suspend fun markBootstrapCompleted() {
+        context.signalDataStore.edit { prefs ->
+            prefs[BOOTSTRAP_COMPLETED_KEY] = true
+        }
+    }
+
+    suspend fun isBootstrapCompleted(): Boolean {
+        val prefs = context.signalDataStore.data.first()
+        return prefs[BOOTSTRAP_COMPLETED_KEY] ?: false
     }
 
     suspend fun getBootstrapInfo(): BootstrapInfo {
