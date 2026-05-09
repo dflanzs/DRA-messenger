@@ -101,6 +101,10 @@ public class SignalKyberPreKey {
         return this.preKeyId;
     }
 
+    public void SetPreKeyId(int preKeyId) {
+        this.preKeyId = preKeyId;
+    }
+
     public byte[] GetPublicKey() {
         return this.publicKey;
     }
