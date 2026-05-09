@@ -30,6 +30,7 @@ private val ONE_TIME_PRE_KEY_RECORDS_B64_KEY = stringPreferencesKey("one_time_pr
 private val ACTIVE_SIGNED_PRE_KEY_ID_KEY = intPreferencesKey("active_signed_pre_key_id")
 private val ACTIVE_KYBER_PRE_KEY_ID_KEY = intPreferencesKey("active_kyber_pre_key_id")
 private val ONE_TIME_PRE_KEYS_STORED_KEY = intPreferencesKey("one_time_pre_keys_stored")
+private val LAST_ONE_TIME_PRE_KEY_ID_KEY = intPreferencesKey("last_one_time_pre_key_id")
 
 class SignalStore(
     private val context: Context,
@@ -75,6 +76,8 @@ class SignalStore(
             prefs[KYBER_PRE_KEY_RECORD_B64_KEY] = material.kyberPreKeyRecord.serialize().b64()
             prefs[ONE_TIME_PRE_KEY_RECORDS_B64_KEY] =
                 JSONArray(material.oneTimePreKeyRecords.map { it.serialize().b64() }).toString()
+            // Track the last one-time prekey ID for generating new ones with unique IDs
+            prefs[LAST_ONE_TIME_PRE_KEY_ID_KEY] = material.oneTimePreKeyRecords.lastOrNull()?.id ?: 0
         }
     }
 
@@ -141,7 +144,9 @@ class SignalStore(
             kyberPreKeyPair,
             identityKeyPair.privateKey.calculateSignature(kyberPreKeyPair.publicKey.serialize()),
         )
-        val oneTimePreKeyRecords = (1..100).map { id ->
+        // Generate a smaller batch initially to avoid excessively large bootstrap payloads
+        val initialOneTimePreKeyCount = 20
+        val oneTimePreKeyRecords = (1..initialOneTimePreKeyCount).map { id ->
             PreKeyRecord(id, ECKeyPair.generate())
         }
 
@@ -152,6 +157,33 @@ class SignalStore(
             kyberPreKeyRecord = kyberPreKeyRecord,
             oneTimePreKeyRecords = oneTimePreKeyRecords,
         )
+    }
+
+    /**
+     * Generate new one-time prekeys with unique IDs.
+     * Uses the last stored ID to ensure no collisions.
+     */
+    suspend fun generateNewOneTimePreKeys(count: Int = 20): List<PreKeyRecord> {
+        val prefs = context.signalDataStore.data.first()
+        val lastId = prefs[LAST_ONE_TIME_PRE_KEY_ID_KEY] ?: 0
+
+        return ((lastId + 1)..(lastId + count)).map { id ->
+            PreKeyRecord(id, ECKeyPair.generate())
+        }
+    }
+
+    /**
+     * Update the last one-time prekey ID after generating new ones.
+     */
+    suspend fun updateLastOneTimePreKeyId(lastId: Int) {
+        context.signalDataStore.edit { prefs ->
+            prefs[LAST_ONE_TIME_PRE_KEY_ID_KEY] = lastId
+        }
+    }
+
+    suspend fun getLastOneTimePreKeyId(): Int {
+        val prefs = context.signalDataStore.data.first()
+        return prefs[LAST_ONE_TIME_PRE_KEY_ID_KEY] ?: 0
     }
 
     private fun String.fromB64(): ByteArray = android.util.Base64.decode(this, android.util.Base64.NO_WRAP)
