@@ -69,6 +69,7 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
         composable(Routes.Home) {
             HomeScreen(
                 signalCoordinator = signalCoordinator,
+                tokenManager = authCoordinator.tokenManager,
                 onLogout = {
                     scope.launch {
                         runCatching {
