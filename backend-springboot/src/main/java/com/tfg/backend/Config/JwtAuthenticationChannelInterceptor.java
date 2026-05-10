@@ -13,6 +13,8 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 public class JwtAuthenticationChannelInterceptor implements ChannelInterceptor {
@@ -20,6 +22,8 @@ public class JwtAuthenticationChannelInterceptor implements ChannelInterceptor {
     private final JwtUtil jwtUtil;
     private final CustomUserDetailsService userDetailsService;
     private final TokenBlacklistService tokenBlacklistService;
+
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationChannelInterceptor.class);
 
     public JwtAuthenticationChannelInterceptor(JwtUtil jwtUtil,
                                                CustomUserDetailsService userDetailsService,
@@ -35,6 +39,13 @@ public class JwtAuthenticationChannelInterceptor implements ChannelInterceptor {
         MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
         if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
+            // Log incoming CONNECT headers for debugging
+            try {
+                logger.debug("STOMP CONNECT headers: {}", accessor.toNativeHeaderMap());
+            } catch (Exception ex) {
+                logger.debug("Unable to log native headers: {}", ex.getMessage());
+            }
+
             String authHeader = accessor.getFirstNativeHeader("Authorization");
 
             if (authHeader == null) {
