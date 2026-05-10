@@ -13,6 +13,18 @@ import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 
 object RetrofitProvider {
+    fun getOkHttpClient(tokenManager: TokenManager): OkHttpClient {
+        return OkHttpClient.Builder()
+            .addInterceptor(JwtInterceptor(tokenManager))
+            .build()
+    }
+
+    fun getMoshi(): Moshi {
+        return Moshi.Builder()
+            .add(KotlinJsonAdapterFactory())
+            .build()
+    }
+
     fun createAuthApiService(
         context: Context? = null,
         baseUrl: String = NetworkConfig.resolveBaseUrl(context),
