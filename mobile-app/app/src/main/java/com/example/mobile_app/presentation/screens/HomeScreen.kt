@@ -1,18 +1,27 @@
 package com.example.mobile_app.presentation.screens
 
+import android.net.Uri
 import android.util.Log
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Card
+import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,16 +31,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.mobile_app.BuildConfig
+import com.example.mobile_app.data.model.chat.ChatState
+import com.example.mobile_app.data.model.chat.LocalChatRecord
+import com.example.mobile_app.presentation.auth.AuthCoordinator
 import com.example.mobile_app.presentation.auth.toAuthUserMessage
+import com.example.mobile_app.presentation.chat.ChatCoordinator
 import com.example.mobile_app.presentation.signal.SignalCoordinator
 import com.example.mobile_app.presentation.websocket.WebSocketCoordinator
-import com.example.mobile_app.security.TokenManager
+import androidx.navigation.NavController
 import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
     signalCoordinator: SignalCoordinator? = null,
-    tokenManager: TokenManager? = null,
+    authCoordinator: AuthCoordinator,
+    chatCoordinator: ChatCoordinator,
+    navController: NavController,
     onLogout: () -> Unit,
 ) {
     var isBootstrappingKeys by remember { mutableStateOf(false) }
@@ -40,8 +55,12 @@ fun HomeScreen(
     var isConnectingWebSocket by remember { mutableStateOf(false) }
     var webSocketError by remember { mutableStateOf<String?>(null) }
     var webSocketConnected by remember { mutableStateOf(false) }
+    var showCreateChatDialog by remember { mutableStateOf(false) }
+    var chatsLoaded by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val TAG = "HomeScreen"
+    val chatState by chatCoordinator.state.collectAsState(initial = ChatState())
+    val currentUser = authCoordinator.currentUserManager.getCurrentUser()
 
     // Paso 1: Bootstrap de claves Signal
     LaunchedEffect(signalCoordinator) {
@@ -71,7 +90,7 @@ fun HomeScreen(
 
     // Paso 2: Conectar a WebSocket después del bootstrap exitoso
     LaunchedEffect(bootstrapSuccess) {
-        if (bootstrapSuccess && tokenManager != null && !webSocketConnected && webSocketError == null) {
+        if (bootstrapSuccess && !webSocketConnected && webSocketError == null) {
             isConnectingWebSocket = true
             scope.launch {
                 runCatching {
@@ -79,9 +98,10 @@ fun HomeScreen(
                     Log.d(TAG, "Base URL: ${BuildConfig.BACKEND_BASE_URL}")
 
                     val webSocketUseCases = WebSocketCoordinator.getWebSocketUseCases(
-                        tokenManager = tokenManager,
+                        tokenManager = authCoordinator.tokenManager,
                         baseUrl = BuildConfig.BACKEND_BASE_URL.trimEnd('/')
                     )
+                    chatCoordinator.setWebSocketUseCases(webSocketUseCases)
 
                     // Conectar
                     Log.d(TAG, "Llamando connectWebSocket()...")
@@ -95,11 +115,28 @@ fun HomeScreen(
                     Log.d(TAG, "Suscribiendo a mensajes Signal...")
                     val subscribed = webSocketUseCases.subscribeToSignalMessages { message ->
                         Log.d(TAG, "Mensaje Signal recibido: ${message.envelopeId}")
-                        // Aquí se pueden procesar los mensajes recibidos
+                        scope.launch {
+                            chatCoordinator.saveIncomingWebSocketMessage(
+                                conversationType = message.conversationType,
+                                conversationId = message.conversationId,
+                                senderUserId = message.senderUserId,
+                                cypherTextB64 = message.cypherTextB64,
+                                createdAt = message.createdAt?.toString() ?: java.time.LocalDateTime.now().toString(),
+                            )
+                        }
                     }
 
                     if (!subscribed) {
                         Log.w(TAG, "Suscripción retornó false, pero continuando...")
+                    }
+
+                    if (!chatsLoaded) {
+                        runCatching {
+                            chatCoordinator.refreshChats()
+                        }.onFailure { throwable ->
+                            Log.w(TAG, "No se pudieron sincronizar los chats locales: ${throwable.message}")
+                        }
+                        chatsLoaded = true
                     }
 
                     webSocketConnected = true
@@ -119,11 +156,11 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = "Bienvenido",
+            text = "Mensajes",
             style = MaterialTheme.typography.headlineMedium,
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -155,18 +192,50 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.error,
             )
         } else if (webSocketConnected) {
-            Text(
-                text = "✓ Claves Signal configuradas",
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "✓ WebSocket conectado",
-                style = MaterialTheme.typography.bodyLarge,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text(
+                        text = currentUser?.name ?: "Usuario",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = currentUser?.email ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                Button(onClick = { showCreateChatDialog = true }) {
+                    Text("Crear chat")
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (chatState.chats.isEmpty()) {
+                Text(
+                    text = "No tienes chats activos todavía.",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(chatState.chats, key = { it.chatKey }) { chat ->
+                        ChatListItem(
+                            chat = chat,
+                            onClick = {
+                                navController.navigate("chat/${Uri.encode(chat.chatKey)}")
+                            },
+                        )
+                    }
+                }
+            }
         } else {
             Text(
-                text = "La base de la app ya está lista para seguir con autenticación, cifrado y chat.",
+                text = "Preparando la pantalla de mensajes...",
                 style = MaterialTheme.typography.bodyLarge,
             )
         }
@@ -177,6 +246,61 @@ fun HomeScreen(
             enabled = !isBootstrappingKeys && !isConnectingWebSocket,
         ) {
             Text("Cerrar sesión")
+        }
+
+        if (showCreateChatDialog) {
+            CreateChatDialog(
+                users = chatState.users,
+                currentUserId = currentUser?.id,
+                onDismiss = { showCreateChatDialog = false },
+                onCreateDirect = { targetUserId ->
+                    scope.launch {
+                        val chat = chatCoordinator.createDirectChat(targetUserId)
+                        if (chat != null) {
+                            showCreateChatDialog = false
+                            navController.navigate("chat/${Uri.encode(chat.chatKey)}")
+                        }
+                    }
+                },
+                onCreateGroup = { name, userIds ->
+                    scope.launch {
+                        val chat = chatCoordinator.createGroupChat(name, userIds)
+                        if (chat != null) {
+                            showCreateChatDialog = false
+                            navController.navigate("chat/${Uri.encode(chat.chatKey)}")
+                        }
+                    }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChatListItem(
+    chat: LocalChatRecord,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = chat.title,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = chat.lastMessageText ?: "Sin mensajes todavía",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = chat.lastMessageAt ?: chat.createdAt,
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
     }
 }
