@@ -19,12 +19,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven {
-            name = "SignalBuildArtifacts"
-            url = uri("https://build-artifacts.signal.org/libraries/maven/")
-        }
     }
 }
+
+includeBuild("libsignal/java")
 
 rootProject.name = "mobile-app"
 include(":app")
