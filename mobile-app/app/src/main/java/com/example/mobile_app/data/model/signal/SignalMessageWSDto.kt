@@ -14,4 +14,3 @@ data class SignalMessageWSDto(
     val cypherTextB64: String,
     val createdAt: LocalDateTime? = null
 )
-
