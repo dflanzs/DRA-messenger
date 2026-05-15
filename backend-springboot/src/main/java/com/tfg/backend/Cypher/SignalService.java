@@ -27,8 +27,6 @@ import com.tfg.backend.Cypher.Entity.SignalAccount;
 import com.tfg.backend.Cypher.Entity.SignalKyberPreKey;
 import com.tfg.backend.Cypher.Entity.SignalOneTimePreKey;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 
 @Service
@@ -40,9 +38,6 @@ public class SignalService {
     private final SignalKyberPreKeyRepository signalKyberPreKeyRepository;
     private final SignalSignedPreKeyRepository signalSignedPreKeyRepository;
     private final SignalOneTimePreKeyRepository signalOneTimePreKeyRepository;
-
-    @PersistenceContext
-    private EntityManager entityManager;
 
     public SignalService(
             UserService userService,
@@ -141,14 +136,12 @@ public class SignalService {
         // Create new keys
         // Create and persist new signed pre-key and kyber pre-key, capture managed instances
         SignalSignedPreKey newSignedPreKey = new SignalSignedPreKey();
-        newSignedPreKey.SetPreKeyId(request.getSignedPreKeyId());
         newSignedPreKey.SetPublicKey(signedPreKeyPublicBytes);
         newSignedPreKey.SetSignature(signedPreKeySignatureBytes);
         newSignedPreKey.SetUser(userAccount.GetUser());
         SignalSignedPreKey savedSignedPreKey = signalSignedPreKeyRepository.save(newSignedPreKey);
 
         SignalKyberPreKey newKyberPreKey = new SignalKyberPreKey();
-        newKyberPreKey.SetPreKeyId(request.getKyberPreKeyId());
         newKyberPreKey.SetPublicKey(kyberPreKeyPublicBytes);
         newKyberPreKey.SetSignature(kyberPreKeySignatureBytes);
         newKyberPreKey.SetUser(userAccount.GetUser());
@@ -160,7 +153,7 @@ public class SignalService {
         userAccount.SetActiveKyberPreKey(savedKyberPreKey);
         userAccount.SetActiveIdentityKeyPublic(identityKeyPublicBytes);
         if (!accountAlreadyExists) {
-            entityManager.persist(userAccount);
+            signalAccountRepository.save(userAccount);
         }
 
         int oneTimePreKeysCount = 0;
@@ -168,22 +161,10 @@ public class SignalService {
         for (SignalOneTimePreKeyDto signalOneTimePreKeyDto : oneTimePreKeysPublicBytesList) {
             byte[] oneTimePreKeyPublicBytes = decoder.decode(signalOneTimePreKeyDto.getPublicKeyB64());
 
-            // Avoid unique constraint violation: if a pre-key with the same (user, preKeyId) exists, update it
-            SignalOneTimePreKey existing = signalOneTimePreKeyRepository.findByUserIdAndPreKeyId(userId, signalOneTimePreKeyDto.getPreKeyId());
-            if (existing != null) {
-                existing.SetPublicKey(oneTimePreKeyPublicBytes);
-                existing.SetConsumedAt(null);
-                existing.SetUser(userAccount.GetUser());
-                // refresh upload time
-                existing.SetUploadedAt(LocalDateTime.now());
-                signalOneTimePreKeyRepository.save(existing);
-            } else {
-                SignalOneTimePreKey newOneTimePreKey = new SignalOneTimePreKey();
-                newOneTimePreKey.SetPreKeyId(signalOneTimePreKeyDto.getPreKeyId());
-                newOneTimePreKey.SetPublicKey(oneTimePreKeyPublicBytes);
-                newOneTimePreKey.SetUser(userAccount.GetUser());
-                signalOneTimePreKeyRepository.save(newOneTimePreKey);
-            }
+            SignalOneTimePreKey newOneTimePreKey = new SignalOneTimePreKey();
+            newOneTimePreKey.SetPublicKey(oneTimePreKeyPublicBytes);
+            newOneTimePreKey.SetUser(userAccount.GetUser());
+            signalOneTimePreKeyRepository.save(newOneTimePreKey);
 
             oneTimePreKeysCount++;
         }
@@ -235,23 +216,11 @@ public class SignalService {
                 throw new IllegalArgumentException(HttpStatus.BAD_REQUEST + " Invalid base64 keys");
             }
 
-            // Ensure preKeyId is set (was missing) and avoid duplicates by updating existing if present
-            int preKeyId = oneTimePreKeyDto.getPreKeyId();
-            SignalOneTimePreKey existing = signalOneTimePreKeyRepository.findByUserIdAndPreKeyId(userId, preKeyId);
-            if (existing != null) {
-                existing.SetPublicKey(oneTimePreKeyPublicBytes);
-                existing.SetConsumedAt(null);
-                existing.SetUser(userAccount.GetUser());
-                existing.SetUploadedAt(LocalDateTime.now());
-                signalOneTimePreKeyRepository.save(existing);
-            } else {
-                SignalOneTimePreKey newOneTimePreKey = new SignalOneTimePreKey();
-                newOneTimePreKey.SetPreKeyId(preKeyId);
-                newOneTimePreKey.SetPublicKey(oneTimePreKeyPublicBytes);
-                newOneTimePreKey.SetUser(userAccount.GetUser());
-                signalOneTimePreKeyRepository.save(newOneTimePreKey);
-            }
-
+            SignalOneTimePreKey newOneTimePreKey = new SignalOneTimePreKey();
+            newOneTimePreKey.SetPublicKey(oneTimePreKeyPublicBytes);
+            newOneTimePreKey.SetUser(userAccount.GetUser());
+            signalOneTimePreKeyRepository.save(newOneTimePreKey);
+            
             oneTimePreKeysCount++;
         }
 
@@ -278,8 +247,6 @@ public class SignalService {
         if (oneTimePreKey != null) {
             oneTimePreKey.SetConsumedAt(LocalDateTime.now());
             signalOneTimePreKeyRepository.save(oneTimePreKey);
-        } else {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No unconsumed one-time pre-keys available");
         }
 
         String oneTimePreKeyString = java.util.Base64.getEncoder().encodeToString(oneTimePreKey.GetPublicKey());
