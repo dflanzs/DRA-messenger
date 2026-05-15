@@ -74,5 +74,30 @@ object RetrofitProvider {
             .build()
             .create(SignalApiService::class.java)
     }
+
+    fun createChatApiService(
+        context: Context? = null,
+        baseUrl: String = NetworkConfig.resolveBaseUrl(context),
+        okHttpClient: OkHttpClient = OkHttpClient.Builder().build(),
+    ): ChatApiService {
+        val client = if (context != null) {
+            okHttpClient.newBuilder()
+                .addInterceptor(JwtInterceptor(TokenManager(context.applicationContext)))
+                .build()
+        } else {
+            okHttpClient
+        }
+
+        val moshi = Moshi.Builder()
+            .add(KotlinJsonAdapterFactory())
+            .build()
+
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .client(client)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+            .create(ChatApiService::class.java)
+    }
 }
 
