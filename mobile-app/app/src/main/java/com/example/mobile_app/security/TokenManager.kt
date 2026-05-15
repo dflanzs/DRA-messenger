@@ -11,6 +11,7 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import android.security.keystore.KeyGenParameterSpec.Builder as KeySpecBuilder
+import org.json.JSONObject
 
 class TokenManager(context: Context) {
     private val preferences: SharedPreferences =
@@ -25,9 +26,20 @@ class TokenManager(context: Context) {
 
     fun getToken(): String? {
         val encrypted = preferences.getString(KEY_TOKEN_ENCRYPTED, null) ?: return null
-        return runCatching { decrypt(encrypted) }
+        val token = runCatching { decrypt(encrypted) }
             .getOrNull()
             ?.takeIf { it.isNotBlank() }
+            ?: run {
+                clearToken()
+                return null
+            }
+
+        if (isJwtExpired(token)) {
+            clearToken()
+            return null
+        }
+
+        return token
     }
 
     fun clearToken() {
@@ -76,6 +88,28 @@ class TokenManager(context: Context) {
         cipher.init(Cipher.DECRYPT_MODE, getOrCreateSecretKey(), spec)
 
         return cipher.doFinal(cipherText).toString(Charsets.UTF_8)
+    }
+
+    private fun isJwtExpired(token: String): Boolean {
+        val payload = decodeJwtPayload(token) ?: return true
+        val expSeconds = runCatching {
+            JSONObject(payload).optLong("exp", -1L)
+        }.getOrDefault(-1L)
+
+        return expSeconds <= 0L || System.currentTimeMillis() >= expSeconds * 1000L
+    }
+
+    private fun decodeJwtPayload(token: String): String? {
+        val parts = token.split('.')
+        if (parts.size < 2) return null
+
+        val payload = parts[1]
+        val padding = "=".repeat((4 - payload.length % 4) % 4)
+
+        return runCatching {
+            val decoded = Base64.decode(payload + padding, Base64.URL_SAFE or Base64.NO_WRAP)
+            String(decoded, Charsets.UTF_8)
+        }.getOrNull()
     }
 
     companion object {

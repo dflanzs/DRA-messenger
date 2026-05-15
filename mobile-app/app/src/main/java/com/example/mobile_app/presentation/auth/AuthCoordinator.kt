@@ -9,10 +9,12 @@ import com.example.mobile_app.domain.usecase.LoginUseCase
 import com.example.mobile_app.domain.usecase.LogoutUseCase
 import com.example.mobile_app.domain.usecase.RegisterUseCase
 import com.example.mobile_app.domain.usecase.VerifyEmailUseCase
+import com.example.mobile_app.security.CurrentUserManager
 import com.example.mobile_app.security.TokenManager
 
 class AuthCoordinator(
     val tokenManager: TokenManager,
+    val currentUserManager: CurrentUserManager,
     val registerUseCase: RegisterUseCase,
     val verifyEmailUseCase: VerifyEmailUseCase,
     val loginUseCase: LoginUseCase,
@@ -25,16 +27,18 @@ fun rememberAuthCoordinator(): AuthCoordinator {
 
     return remember(context) {
         val tokenManager = TokenManager(context)
+        val currentUserManager = CurrentUserManager(context)
         val repository = RetrofitAuthRepository(
             RetrofitProvider.createAuthApiService(context),
         )
 
         AuthCoordinator(
             tokenManager = tokenManager,
+            currentUserManager = currentUserManager,
             registerUseCase = RegisterUseCase(repository),
             verifyEmailUseCase = VerifyEmailUseCase(repository),
-            loginUseCase = LoginUseCase(repository, tokenManager),
-            logoutUseCase = LogoutUseCase(repository, tokenManager),
+            loginUseCase = LoginUseCase(repository, tokenManager, currentUserManager),
+            logoutUseCase = LogoutUseCase(repository, tokenManager, currentUserManager),
         )
     }
 }
