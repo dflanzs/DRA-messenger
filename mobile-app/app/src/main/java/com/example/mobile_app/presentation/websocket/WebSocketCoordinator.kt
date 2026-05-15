@@ -31,9 +31,9 @@ object WebSocketCoordinator {
                     Log.e(TAG, "Token no disponible")
                     throw Exception("Token no disponible para WebSocket")
                 }
-
+                
                 Log.d(TAG, "Token obtenido, longitud: ${token.length}")
-
+                
                 val okHttpClient = RetrofitProvider.getOkHttpClient(tokenManager)
                 val moshi = RetrofitProvider.getMoshi()
 

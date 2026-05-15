@@ -205,27 +205,15 @@ class WsStompClient(
                 command = StompFrame.COMMAND_SEND,
                 headers = mapOf(
                     "destination" to destination,
-                    "content-type" to "application/json",
-                    "receipt" to receiptId
+                    "content-type" to "application/json"
                 ),
                 body = body
             )
 
-            // Registrar callback para el receipt
-            receiptCallbacks[receiptId] = {
-                continuation.resume(true)
-            }
-
             Log.d(TAG, "Enviando a: $destination")
-            webSocket?.send(StompFrame.serialize(sendFrame))
-
-            // Timeout de 10 segundos
-            scope.launch {
-                delay(10000)
-                if (continuation.isActive && receiptCallbacks.containsKey(receiptId)) {
-                    receiptCallbacks.remove(receiptId)
-                    continuation.resume(false)
-                }
+            val sent = webSocket?.send(StompFrame.serialize(sendFrame)) ?: false
+            if (continuation.isActive) {
+                continuation.resume(sent)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error enviando mensaje", e)

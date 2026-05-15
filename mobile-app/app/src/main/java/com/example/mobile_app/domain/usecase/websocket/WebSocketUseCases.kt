@@ -15,7 +15,7 @@ class WebSocketUseCases(
     suspend fun connectWebSocket(): Boolean {
         return webSocketRepository.connect()
     }
-
+    
     /**
      * Suscribirse a mensajes Signal privados
      */
@@ -24,7 +24,7 @@ class WebSocketUseCases(
     ): Boolean {
         return webSocketRepository.subscribeToSignalMessages(onMessage)
     }
-
+    
     /**
      * Suscribirse a mensajes generales
      */
@@ -33,28 +33,28 @@ class WebSocketUseCases(
     ): Boolean {
         return webSocketRepository.subscribeToMessages(onMessage)
     }
-
+    
     /**
      * Enviar mensaje privado
      */
     suspend fun sendPrivateMessage(messageJson: String): Boolean {
         return webSocketRepository.sendPrivateMessage(messageJson)
     }
-
+    
     /**
      * Enviar mensaje de grupo
      */
     suspend fun sendGroupMessage(messageJson: String): Boolean {
         return webSocketRepository.sendGroupMessage(messageJson)
     }
-
+    
     /**
      * Desconectar
      */
     fun disconnectWebSocket() {
         webSocketRepository.disconnect()
     }
-
+    
     /**
      * Verificar si está conectado
      */

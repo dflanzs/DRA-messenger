@@ -29,12 +29,12 @@ class WebSocketRepository(
             Log.d(TAG, "Iniciando conexión a WebSocket con baseUrl: $baseUrl")
             stompClient = WsStompClient(baseUrl, token, okHttpClient, scope)
 
-            // Chequeo HTTP diagnóstico (no bloqueante): algunos backends responden 404/401 en "/"
-            // y aun así aceptan WebSocket en /ws-chat.
+            // Primer chequeo HTTP rápido (actuator/health) para detectar reachability
             try {
                 val httpOk = com.example.mobile_app.data.network.ConnectivityDiagnostics.testHttpConnectivity(baseUrl, okHttpClient)
                 if (!httpOk) {
-                    Log.w(TAG, "Health check HTTP no exitoso para $baseUrl; continuando con testTransport")
+                    Log.e(TAG, "Health check HTTP falló para $baseUrl; abortando conexión WebSocket")
+                    return false
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Health check lanzó excepción: ${e.message}")
