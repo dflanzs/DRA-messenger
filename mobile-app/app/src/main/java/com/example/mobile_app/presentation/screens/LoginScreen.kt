@@ -47,7 +47,7 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = "Bienvenido",
+            text = "Signal App",
             style = MaterialTheme.typography.headlineMedium,
         )
         Spacer(modifier = Modifier.height(8.dp))

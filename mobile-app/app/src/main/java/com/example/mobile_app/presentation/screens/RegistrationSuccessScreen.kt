@@ -32,8 +32,7 @@ fun RegistrationSuccessScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Gracias por darte de alta. Verifica tu correo electrónico en el enlace que has recibido." +
-                    "Una vez hecho un administrador de tu organización autorizará tu cuenta.",
+            text = "Gracias por darte de alta. Un administrador de tu organización debe verificar tu cuenta.",
             style = MaterialTheme.typography.bodyLarge,
         )
         Spacer(modifier = Modifier.height(24.dp))
