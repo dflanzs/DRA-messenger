@@ -57,7 +57,6 @@ public class TrustCirclesController {
         return trustCirclesService.getUserCircles(userId);
     }
 
-    // Solo admin porque para usuarios será otro endpoint
     @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @PostMapping
     public ResponseEntity<TrustCircles> create(@RequestBody CreateTrustCircleDto dto,

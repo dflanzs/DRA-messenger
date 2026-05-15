@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tfg.backend.Chat.dto.ChatUserDto;
 import com.tfg.backend.User.dto.UpdateUserDto;
 import com.tfg.backend.User.dto.UpdateUserRoleDto;
 
@@ -28,6 +29,14 @@ public class UserController {
     @GetMapping
     public List<User> list() {
         return userService.list();
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/active")
+    public List<ChatUserDto> listActive() {
+        return userService.list().stream()
+            .map(user -> new ChatUserDto(user.getId(), user.getName(), user.getEmail(), user.isOnlineStatus()))
+            .toList();
     }
 
     @PreAuthorize("@authorizationService.isSelfOrAdmin(authentication, #id)")
