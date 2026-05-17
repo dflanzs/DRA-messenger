@@ -190,7 +190,7 @@ class ChatRepository(
             senderUserId = senderUserId,
             senderName = senderName,
             text = text,
-            createdAt = createdAt,
+            createdAt = utcToLocal(createdAt),
             isOutgoing = senderUserId == currentUser.id,
         )
     }
@@ -367,6 +367,19 @@ class ChatRepository(
     private fun encodeState(state: ChatState): String {
         return stateAdapter.toJson(state)
     }
+
+    /**
+     * Convierte un timestamp ISO sin zona emitido por el backend (en UTC) a la
+     * hora local del dispositivo. Los mensajes salientes ya se guardan en local,
+     * así solo se normalizan los entrantes y todas las burbujas son comparables.
+     */
+    private fun utcToLocal(isoUtc: String): String = runCatching {
+        java.time.LocalDateTime.parse(isoUtc)
+            .atZone(java.time.ZoneOffset.UTC)
+            .withZoneSameInstant(java.time.ZoneId.systemDefault())
+            .toLocalDateTime()
+            .toString()
+    }.getOrElse { isoUtc }
 
     private fun decodePayload(payloadB64: String): String {
         return runCatching {
