@@ -74,6 +74,29 @@ export async function getTrustCircles(): Promise<TrustCircle[]> {
   return data;
 }
 
+export async function createTrustCircle(name: string, userIds: number[]): Promise<TrustCircle> {
+  const { data } = await api.post<TrustCircle>('/api/trust-circles', {
+    name,
+    userIds,
+  });
+  return data;
+}
+
+export async function addUserToCircle(circleId: number, userId: number): Promise<TrustCircle> {
+  const { data } = await api.post<TrustCircle>(
+    `/api/trust-circles/${circleId}/users/${userId}`,
+    {}
+  );
+  return data;
+}
+
+export async function removeUserFromCircle(circleId: number, userId: number): Promise<TrustCircle> {
+  const { data } = await api.delete<TrustCircle>(
+    `/api/trust-circles/${circleId}/users/${userId}`
+  );
+  return data;
+}
+
 export async function deleteTrustCircle(circleId: number): Promise<void> {
   await api.delete(`/api/trust-circles/${circleId}`);
 }

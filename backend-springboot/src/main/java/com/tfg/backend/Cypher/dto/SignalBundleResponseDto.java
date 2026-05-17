@@ -47,4 +47,48 @@ public class SignalBundleResponseDto {
         this.kyberPreKeyPublicB64 = kyberPreKeyPublicB64;
         this.kyberPreKeySignatureB64 = kyberPreKeySignatureB64;
     }
+
+    public int getRegistrationId() {
+        return registrationId;
+    }
+
+    public int getDeviceId() {
+        return deviceId;
+    }
+
+    public int getPreKeyId() {
+        return preKeyId;
+    }
+
+    public String getPreKeyPublicB64() {
+        return preKeyPublicB64;
+    }
+
+    public int getSignedPreKeyId() {
+        return signedPreKeyId;
+    }
+
+    public String getSignedPreKeyPublicB64() {
+        return signedPreKeyPublicB64;
+    }
+
+    public String getSignedPreKeySignatureB64() {
+        return signedPreKeySignatureB64;
+    }
+
+    public String getIdentityKeyB64() {
+        return identityKeyB64;
+    }
+
+    public int getKyberPreKeyId() {
+        return kyberPreKeyId;
+    }
+
+    public String getKyberPreKeyPublicB64() {
+        return kyberPreKeyPublicB64;
+    }
+
+    public String getKyberPreKeySignatureB64() {
+        return kyberPreKeySignatureB64;
+    }
 }

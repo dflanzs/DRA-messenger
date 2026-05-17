@@ -12,10 +12,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageRequestDto;
-import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageResponseDto;
 import com.tfg.backend.SignalEnvelope.dto.SignalMessageWSDto;
 import com.tfg.backend.SignalEnvelope.dto.SignalGroupMessageRequestDto;
-import com.tfg.backend.SignalEnvelope.dto.SignalGroupMessageResponseDto;
 import com.tfg.backend.TrustCircles.TrustCirclesService;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserService;
@@ -39,19 +37,18 @@ public class SignalEnvelopeController {
     }
 
     @MessageMapping("/group-message")
-    public SignalGroupMessageResponseDto sendGroupMessage(
+    public void sendGroupMessage(
             @Payload SignalGroupMessageRequestDto messageDTO,
             Principal principal
     ) {
         User sender = userService.getByEmail(principal.getName());
 
-        SignalGroupMessageResponseDto response = messageService.sendGroupMessage(sender.getId(), messageDTO);
-        return response;
+        messageService.sendGroupMessage(sender.getId(), messageDTO);
     }
 
 	@MessageMapping("/private-message")
-	public SignalDirectMessageResponseDto sendPrivateMessage(
-            @Valid SignalDirectMessageRequestDto request,
+	public void sendPrivateMessage(
+            @Valid @Payload SignalDirectMessageRequestDto request,
             Principal principal
     ) {
         // Check if sender can communicate with recipient
@@ -61,8 +58,7 @@ public class SignalEnvelopeController {
             throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Can not communicate with this user");
         }
 
-		SignalDirectMessageResponseDto response = messageService.sendPrivateMessage(sender.getId(), request);
-        return response;
+    messageService.sendPrivateMessage(sender.getId(), request);
 	}
     
     @GetMapping("/pending")

@@ -56,11 +56,32 @@ public class SignalService {
     @Transactional
     public SignalBootstrapResponseDto replaceKeysBootstrap(Long userId, SignalBootstrapRequestDto request) {
         // Get user account
+        boolean accountAlreadyExists = true;
         SignalAccount userAccount = signalAccountRepository.getByUserId(userId);
         if (userAccount == null) {
+            accountAlreadyExists = false;
             userAccount = new SignalAccount();
             User user = userService.getById(userId);
             userAccount.SetUser(user);
+        }
+
+        // If the account is already bootstrapped (has active keys), do not recreate them.
+        // This makes the endpoint idempotent: re-login does not regenerate Signal keys.
+        if (accountAlreadyExists
+                && userAccount.GetActiveSignedPreKey() != null
+                && userAccount.GetActiveKyberPreKey() != null
+                && userAccount.GetActiveIdentityKeyPublic() != null) {
+            int existingOneTimeCount = 0;
+            for (SignalOneTimePreKey existingOneTimePreKey : signalOneTimePreKeyRepository.getByUserId(userId)) {
+                if (existingOneTimePreKey != null && existingOneTimePreKey.GetConsumedAt() == null) {
+                    existingOneTimeCount++;
+                }
+            }
+            return new SignalBootstrapResponseDto(
+                    userAccount.GetActiveSignedPreKey().GetPreKeyId(),
+                    userAccount.GetActiveKyberPreKey().GetPreKeyId(),
+                    existingOneTimeCount
+            );
         }
 
         // Verify that all required fields are present in the request, if not throw an exception
@@ -124,9 +145,7 @@ public class SignalService {
         }
 
         for (SignalOneTimePreKey userOneTimePreKey : signalOneTimePreKeyRepository.getByUserId(userId)) {
-            userOneTimePreKey.SetConsumedAt(LocalDateTime.now());
-            signalOneTimePreKeyRepository.save(userOneTimePreKey);
-            
+            // Mark existing one-time pre-keys as consumed
             if (userOneTimePreKey != null) {
                 userOneTimePreKey.SetConsumedAt(LocalDateTime.now());
                 signalOneTimePreKeyRepository.save(userOneTimePreKey);
@@ -134,24 +153,29 @@ public class SignalService {
         }
 
         // Create new keys
+        // Create and persist new signed pre-key and kyber pre-key, capture managed instances
         SignalSignedPreKey newSignedPreKey = new SignalSignedPreKey();
+        newSignedPreKey.SetPreKeyId(request.getSignedPreKeyId());
         newSignedPreKey.SetPublicKey(signedPreKeyPublicBytes);
         newSignedPreKey.SetSignature(signedPreKeySignatureBytes);
         newSignedPreKey.SetUser(userAccount.GetUser());
-        signalSignedPreKeyRepository.save(newSignedPreKey);
+        SignalSignedPreKey savedSignedPreKey = signalSignedPreKeyRepository.save(newSignedPreKey);
 
         SignalKyberPreKey newKyberPreKey = new SignalKyberPreKey();
+        newKyberPreKey.SetPreKeyId(request.getKyberPreKeyId());
         newKyberPreKey.SetPublicKey(kyberPreKeyPublicBytes);
         newKyberPreKey.SetSignature(kyberPreKeySignatureBytes);
         newKyberPreKey.SetUser(userAccount.GetUser());
-        signalKyberPreKeyRepository.save(newKyberPreKey);
+        SignalKyberPreKey savedKyberPreKey = signalKyberPreKeyRepository.save(newKyberPreKey);
 
-        // Update account with new keys
+        // Update account with new keys using the managed instances returned by save
         userAccount.SetRegistrationId(registrationId);
-        userAccount.SetActiveSignedPreKey(newSignedPreKey);
-        userAccount.SetActiveKyberPreKey(newKyberPreKey);
+        userAccount.SetActiveSignedPreKey(savedSignedPreKey);
+        userAccount.SetActiveKyberPreKey(savedKyberPreKey);
         userAccount.SetActiveIdentityKeyPublic(identityKeyPublicBytes);
-        signalAccountRepository.save(userAccount);
+        if (!accountAlreadyExists) {
+            signalAccountRepository.save(userAccount);
+        }
 
         int oneTimePreKeysCount = 0;
 
@@ -159,6 +183,7 @@ public class SignalService {
             byte[] oneTimePreKeyPublicBytes = decoder.decode(signalOneTimePreKeyDto.getPublicKeyB64());
 
             SignalOneTimePreKey newOneTimePreKey = new SignalOneTimePreKey();
+            newOneTimePreKey.SetPreKeyId(signalOneTimePreKeyDto.getPreKeyId());
             newOneTimePreKey.SetPublicKey(oneTimePreKeyPublicBytes);
             newOneTimePreKey.SetUser(userAccount.GetUser());
             signalOneTimePreKeyRepository.save(newOneTimePreKey);
@@ -214,6 +239,7 @@ public class SignalService {
             }
 
             SignalOneTimePreKey newOneTimePreKey = new SignalOneTimePreKey();
+            newOneTimePreKey.SetPreKeyId(oneTimePreKeyDto.getPreKeyId());
             newOneTimePreKey.SetPublicKey(oneTimePreKeyPublicBytes);
             newOneTimePreKey.SetUser(userAccount.GetUser());
             signalOneTimePreKeyRepository.save(newOneTimePreKey);

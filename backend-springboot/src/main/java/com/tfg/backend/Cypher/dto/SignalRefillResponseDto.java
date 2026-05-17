@@ -11,4 +11,20 @@ public class SignalRefillResponseDto {
         this.oneTimePreKeysStored = oneTimePreKeysStored;
         this.oneTimePreKeysRemaining = oneTimePreKeysRemaining;
     }
+
+    public int getOneTimePreKeysStored() {
+        return oneTimePreKeysStored;
+    }
+
+    public void setOneTimePreKeysStored(int oneTimePreKeysStored) {
+        this.oneTimePreKeysStored = oneTimePreKeysStored;
+    }
+
+    public int getOneTimePreKeysRemaining() {
+        return oneTimePreKeysRemaining;
+    }
+
+    public void setOneTimePreKeysRemaining(int oneTimePreKeysRemaining) {
+        this.oneTimePreKeysRemaining = oneTimePreKeysRemaining;
+    }
 }

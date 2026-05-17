@@ -3,6 +3,7 @@ package com.tfg.backend.Cypher.Entity;
 import java.time.LocalDateTime;
 
 import org.hibernate.annotations.Check;
+import org.springframework.data.domain.Persistable;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import com.tfg.backend.User.User;
@@ -28,7 +29,7 @@ import jakarta.persistence.Table;
 @Entity
 @Table(name = "signal_accounts")
 @Check(constraints = "device_id = 1") // Enforce that device_id is always 1
-public class SignalAccount {
+public class SignalAccount implements Persistable<Long> {
     @Id
     @Column(name = "user_id")
     private Long userId;
@@ -146,5 +147,20 @@ public class SignalAccount {
 
     public LocalDateTime GetUpdatedAt() {
         return this.updatedAt;
+    }
+
+    /**
+     * The id is assigned eagerly via {@code @MapsId} from the associated User, so a non-null id
+     * cannot tell new entities apart. {@code createdAt} is only set by {@code @PrePersist}, so it
+     * stays null until the row has been persisted at least once — making it a reliable new flag.
+     */
+    @Override
+    public Long getId() {
+        return this.userId;
+    }
+
+    @Override
+    public boolean isNew() {
+        return this.createdAt == null;
     }
 }

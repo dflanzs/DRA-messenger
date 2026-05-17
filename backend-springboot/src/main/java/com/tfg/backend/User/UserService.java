@@ -1,5 +1,6 @@
 package com.tfg.backend.User;
 
+import com.tfg.backend.Chat.dto.ChatUserDto;
 import com.tfg.backend.Enums.UserRole;
 import com.tfg.backend.User.dto.CreateUserDto;
 import com.tfg.backend.User.dto.UpdateUserDto;

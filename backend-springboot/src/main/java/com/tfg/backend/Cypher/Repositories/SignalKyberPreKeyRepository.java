@@ -8,4 +8,7 @@ public interface SignalKyberPreKeyRepository extends JpaRepository<SignalKyberPr
 
     @Query("SELECT s FROM SignalKyberPreKey s WHERE s.user.id = :userId")
     SignalKyberPreKey getByUserId(Long userId);
+
+    @Query("SELECT s FROM SignalKyberPreKey s WHERE s.user.id = :userId AND s.preKeyId = :preKeyId")
+    SignalKyberPreKey findByUserIdAndPreKeyId(Long userId, int preKeyId);
 }
