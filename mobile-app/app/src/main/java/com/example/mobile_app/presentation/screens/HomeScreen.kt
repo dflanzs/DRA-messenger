@@ -294,18 +294,16 @@ fun HomeScreen(
                 onDismiss = { showCreateChatDialog = false },
                 onCreateDirect = { targetUserId ->
                     scope.launch {
-                        val chat = chatCoordinator.createDirectChat(targetUserId)
-                        if (chat != null) {
-                            showCreateChatDialog = false
-                        }
+                        runCatching { chatCoordinator.createDirectChat(targetUserId) }
+                            .onSuccess { chat -> if (chat != null) showCreateChatDialog = false }
+                            .onFailure { Log.e(TAG, "No se pudo crear el chat: ${it.message}", it) }
                     }
                 },
                 onCreateGroup = { name, userIds ->
                     scope.launch {
-                        val chat = chatCoordinator.createGroupChat(name, userIds)
-                        if (chat != null) {
-                            showCreateChatDialog = false
-                        }
+                        runCatching { chatCoordinator.createGroupChat(name, userIds) }
+                            .onSuccess { chat -> if (chat != null) showCreateChatDialog = false }
+                            .onFailure { Log.e(TAG, "No se pudo crear el grupo: ${it.message}", it) }
                     }
                 },
             )
