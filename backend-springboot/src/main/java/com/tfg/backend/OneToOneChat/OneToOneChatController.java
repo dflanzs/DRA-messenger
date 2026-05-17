@@ -1,7 +1,12 @@
 package com.tfg.backend.OneToOneChat;
 
 import com.tfg.backend.Chat.dto.CreateDirectChatRequestDto;
+import com.tfg.backend.Chat.dto.DirectChatResultDto;
 import com.tfg.backend.Chat.dto.DirectChatSummaryDto;
+import com.tfg.backend.TrustCircles.CommunicationRequest;
+import com.tfg.backend.TrustCircles.CommunicationRequestService;
+import com.tfg.backend.TrustCircles.TrustCirclesService;
+import com.tfg.backend.TrustCircles.dto.CommunicationRequestDto;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserService;
 import java.util.List;
@@ -24,13 +29,19 @@ public class OneToOneChatController {
 
 	private final OneToOneChatRepository oneToOneChatRepository;
 	private final UserService userService;
+	private final TrustCirclesService trustCirclesService;
+	private final CommunicationRequestService communicationRequestService;
 
     public OneToOneChatController(
         OneToOneChatRepository oneToOneChatRepository,
-        UserService userService
+        UserService userService,
+        TrustCirclesService trustCirclesService,
+        CommunicationRequestService communicationRequestService
     ) {
 		this.oneToOneChatRepository = oneToOneChatRepository;
 		this.userService = userService;
+		this.trustCirclesService = trustCirclesService;
+		this.communicationRequestService = communicationRequestService;
 	}
 
 
@@ -66,7 +77,7 @@ public class OneToOneChatController {
 	@ResponseBody
 	@PreAuthorize("isAuthenticated()")
 	@PostMapping
-	public ResponseEntity<DirectChatSummaryDto> createOrGetChat(
+	public ResponseEntity<DirectChatResultDto> createOrGetChat(
 		@RequestBody CreateDirectChatRequestDto request,
 		Principal principal
 	) {
@@ -76,15 +87,32 @@ public class OneToOneChatController {
 			return ResponseEntity.badRequest().build();
 		}
 
-		OneToOneChat existing = oneToOneChatRepository.findChatBetweenUsers(currentUser.getId(), targetUser.getId());
-		OneToOneChat chat = existing != null ? existing : oneToOneChatRepository.save(new OneToOneChat(currentUser, targetUser));
-		return ResponseEntity.ok(new DirectChatSummaryDto(
-			chat.getId(),
-			chat.getUser1().getId(),
-			chat.getUser2().getId(),
-			targetUser.getName(),
-			chat.getCreatedAt()
-		));
+		// Si los usuarios ya comparten círculo de confianza, el chat se crea
+		// directamente. Si no, se genera una solicitud de comunicación pendiente.
+		if (trustCirclesService.canUsersCommunicate(currentUser.getId(), targetUser.getId())) {
+			OneToOneChat existing = oneToOneChatRepository.findChatBetweenUsers(currentUser.getId(), targetUser.getId());
+			OneToOneChat chat = existing != null ? existing : oneToOneChatRepository.save(new OneToOneChat(currentUser, targetUser));
+			DirectChatSummaryDto chatDto = new DirectChatSummaryDto(
+				chat.getId(),
+				chat.getUser1().getId(),
+				chat.getUser2().getId(),
+				targetUser.getName(),
+				chat.getCreatedAt()
+			);
+			return ResponseEntity.ok(new DirectChatResultDto("ACTIVE", chatDto, null));
+		}
+
+		CommunicationRequest commRequest =
+			communicationRequestService.createRequest(currentUser.getId(), targetUser.getId());
+		CommunicationRequestDto requestDto = new CommunicationRequestDto(
+			commRequest.getId(),
+			commRequest.getRequester().getId(),
+			commRequest.getRequester().getName(),
+			commRequest.getTarget().getId(),
+			commRequest.getTarget().getName(),
+			commRequest.getCreatedAt()
+		);
+		return ResponseEntity.ok(new DirectChatResultDto("PENDING", null, requestDto));
 	}
 
 	@ResponseBody
