@@ -24,6 +24,7 @@ class ChatCoordinator(
 ) {
     val state: Flow<com.example.mobile_app.data.model.chat.ChatState> = repository.observeState()
     var webSocketUseCases: WebSocketUseCases? = null
+        private set
 
     suspend fun refreshChats() {
         repository.refreshFromServer()
