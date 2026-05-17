@@ -221,16 +221,16 @@ private fun MessageBubble(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (message.isOutgoing) Alignment.End else Alignment.Start,
     ) {
-        if (showSender && !message.isOutgoing) {
-            Text(
-                text = message.senderName,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 8.dp, bottom = 4.dp),
-            )
-        }
         Card {
             Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                if (showSender && !message.isOutgoing) {
+                    Text(
+                        text = message.senderName,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                }
                 Text(
                     text = message.text,
                     style = MaterialTheme.typography.bodyMedium,
