@@ -182,8 +182,11 @@ class ChatRepository(
         val users = getUsersSnapshot()
         val senderName = users.firstOrNull { it.id == senderUserId }?.name ?: senderUserId.toString()
         val text = decodePayload(cypherTextB64)
+        val computedKey = chatKey(conversationType, conversationId)
+        Log.d(TAG, "saveIncomingWS: type=$conversationType id=$conversationId -> key=$computedKey ; " +
+            "chats existentes=${getState().chats.map { it.chatKey }}")
         saveMessage(
-            chatKey = chatKey(conversationType, conversationId),
+            chatKey = computedKey,
             senderUserId = senderUserId,
             senderName = senderName,
             text = text,
@@ -215,8 +218,11 @@ class ChatRepository(
 
     suspend fun getChat(chatKey: String): LocalChatRecord? = getState().chats.firstOrNull { it.chatKey == chatKey }
 
+    // Orden de llegada: la lista se conserva en orden de inserción (orden en que
+    // saveMessage fue invocado). No se reordena por createdAt porque los mensajes
+    // enviados llevan hora local del dispositivo y los recibidos hora UTC del backend.
     suspend fun getMessages(chatKey: String): List<LocalChatMessageRecord> =
-        getState().messages.filter { it.chatKey == chatKey }.sortedBy { it.createdAt }
+        getState().messages.filter { it.chatKey == chatKey }
 
     suspend fun getMembers(chatKey: String): List<Pair<Long, String>> {
         val state = getState()
@@ -253,7 +259,8 @@ class ChatRepository(
                 createdAt = createdAt,
                 isOutgoing = isOutgoing,
             )
-            val updatedMessages = (state.messages + message).sortedBy { it.createdAt }
+            // Append puro: preserva el orden de llegada (ver getMessages).
+            val updatedMessages = state.messages + message
             val updatedChats = state.chats.map { chat ->
                 if (chat.chatKey == chatKey) {
                     chat.copy(lastMessageText = text, lastMessageAt = createdAt)

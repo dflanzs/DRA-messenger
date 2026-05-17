@@ -1,9 +1,11 @@
 package com.example.mobile_app.data.model.signal
 
-import java.time.LocalDateTime
-
 /**
- * DTO para mensajes Signal recibidos via WebSocket
+ * DTO para mensajes Signal recibidos via WebSocket.
+ *
+ * `createdAt` se modela como String: el backend serializa LocalDateTime como
+ * cadena ISO-8601 ("2026-05-17T18:14:42.401976378") y Moshi no trae adapter
+ * para java.time.LocalDateTime.
  */
 data class SignalMessageWSDto(
     val envelopeId: Long,
@@ -12,5 +14,5 @@ data class SignalMessageWSDto(
     val conversationType: String,
     val cypherTextType: Short,
     val cypherTextB64: String,
-    val createdAt: LocalDateTime? = null
+    val createdAt: String? = null
 )
