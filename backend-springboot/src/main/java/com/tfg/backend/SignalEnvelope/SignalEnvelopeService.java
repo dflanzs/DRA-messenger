@@ -28,9 +28,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
 public class SignalEnvelopeService {
 
+    private static final Logger logger = LoggerFactory.getLogger(SignalEnvelopeService.class);
 
     private final UserRepository userRepository;
     private final OneToOneChatRepository oneToOneChatRepository;
@@ -98,9 +102,8 @@ public class SignalEnvelopeService {
             // Send message through WebSocket to recipient
             SignalMessageWSDto wsMessage = new SignalMessageWSDto(
                     signalEnvelope.getId(),
-                    signalEnvelope,
                     signalEnvelope.getSender().getId(),
-                    signalEnvelope.getReceiver().getId(),
+                    groupChat.getId(),
                     signalEnvelope.getConversationType(),
                     request.getCypherTextType(),
                     Base64.getEncoder().encodeToString(signalEnvelope.getCypherText()),
@@ -109,7 +112,14 @@ public class SignalEnvelopeService {
             User userReceiver = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario receptor no encontrado"));
 
-            messagingTemplate.convertAndSendToUser(userReceiver.getEmail(), "/queue/messages", wsMessage);
+            logger.info("WS push grupo -> email={}, convId={}, envelopeId={}, dest=/queue/messages",
+                    userReceiver.getEmail(), wsMessage.getConversationId(), wsMessage.getEnvelopeId());
+            try {
+                messagingTemplate.convertAndSendToUser(userReceiver.getEmail(), "/queue/messages", wsMessage);
+                logger.info("WS push grupo OK -> {}", userReceiver.getEmail());
+            } catch (Exception ex) {
+                logger.error("WS push grupo FALLO -> {}", userReceiver.getEmail(), ex);
+            }
 
             envelopeIds.add(signalEnvelope.getId());
         }
@@ -149,16 +159,22 @@ public class SignalEnvelopeService {
         // Send message through WebSocket to recipient
         SignalMessageWSDto wsMessage = new SignalMessageWSDto(
                     signalEnvelope.getId(),
-                    signalEnvelope,
                     signalEnvelope.getSender().getId(),
-                    signalEnvelope.getReceiver().getId(),
+                    oneToOneChat.getId(),
                     signalEnvelope.getConversationType(),
                     request.getCypherTextType(),
                     Base64.getEncoder().encodeToString(signalEnvelope.getCypherText()),
                     signalEnvelope.getCreatedAt()
                 );
         
-        messagingTemplate.convertAndSendToUser(recipient.getEmail(), "/queue/signal-messages", wsMessage);
+        logger.info("WS push privado -> email={}, convId={}, envelopeId={}, senderId={}",
+                recipient.getEmail(), wsMessage.getConversationId(), wsMessage.getEnvelopeId(), wsMessage.getSenderUserId());
+        try {
+            messagingTemplate.convertAndSendToUser(recipient.getEmail(), "/queue/signal-messages", wsMessage);
+            logger.info("WS push privado OK -> {}", recipient.getEmail());
+        } catch (Exception ex) {
+            logger.error("WS push privado FALLO -> {}", recipient.getEmail(), ex);
+        }
 
         return new SignalDirectMessageResponseDto(signalEnvelope.getId(), signalEnvelope.getCreatedAt());
     }
@@ -174,7 +190,6 @@ public class SignalEnvelopeService {
                 response.add(
                         new SignalMessageWSDto(
                             envelope.getId(),
-                            envelope,
                             envelope.getSender().getId(),
                             envelope.getGroupChat().getId(),
                             envelope.getConversationType(),
@@ -186,7 +201,6 @@ public class SignalEnvelopeService {
                 response.add(
                         new SignalMessageWSDto(
                             envelope.getId(),
-                            envelope,
                             envelope.getSender().getId(),
                             envelope.getOneToOneChat().getId(),
                             envelope.getConversationType(),

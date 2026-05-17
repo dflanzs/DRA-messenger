@@ -16,7 +16,11 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 
 class ChatCoordinator(
     val repository: ChatRepository,
@@ -25,6 +29,11 @@ class ChatCoordinator(
     val state: Flow<com.example.mobile_app.data.model.chat.ChatState> = repository.observeState()
     var webSocketUseCases: WebSocketUseCases? = null
         private set
+
+    // Scope de vida de aplicación: ChatCoordinator se recuerda sobre applicationContext.
+    // Los mensajes WebSocket entrantes deben persistirse aunque HomeScreen ya no esté
+    // en composición (p. ej. estando dentro de ChatDetailScreen).
+    private val coordinatorScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     suspend fun refreshChats() {
         repository.refreshFromServer()
@@ -47,6 +56,27 @@ class ChatCoordinator(
         cypherTextB64: String,
         createdAt: String,
     ) = repository.saveIncomingWebSocketMessage(conversationType, conversationId, senderUserId, cypherTextB64, createdAt)
+
+    /**
+     * Maneja un mensaje WebSocket entrante desde el callback de suscripción STOMP.
+     * Usa el scope propio del coordinador (vida de app), no el de la pantalla, para
+     * que el mensaje se guarde aunque HomeScreen haya salido de composición.
+     */
+    fun onIncomingWebSocketMessage(
+        conversationType: String,
+        conversationId: Long,
+        senderUserId: Long,
+        cypherTextB64: String,
+        createdAt: String,
+    ) {
+        coordinatorScope.launch {
+            runCatching {
+                repository.saveIncomingWebSocketMessage(
+                    conversationType, conversationId, senderUserId, cypherTextB64, createdAt,
+                )
+            }.onFailure { Log.w("ChatCoordinator", "No se pudo guardar mensaje entrante: ${it.message}") }
+        }
+    }
 
     suspend fun saveOutgoingMessage(
         chatKey: String,

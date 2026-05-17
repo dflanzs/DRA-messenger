@@ -117,15 +117,15 @@ fun HomeScreen(
                     Log.d(TAG, "Suscribiendo a mensajes Signal...")
                     val subscribed = webSocketUseCases.subscribeToSignalMessages { message ->
                         Log.d(TAG, "Mensaje Signal recibido: ${message.envelopeId}")
-                        scope.launch {
-                            chatCoordinator.saveIncomingWebSocketMessage(
-                                conversationType = message.conversationType,
-                                conversationId = message.conversationId,
-                                senderUserId = message.senderUserId,
-                                cypherTextB64 = message.cypherTextB64,
-                                createdAt = message.createdAt?.toString() ?: java.time.LocalDateTime.now().toString(),
-                            )
-                        }
+                        // Delega en ChatCoordinator (scope de vida de app): el mensaje se
+                        // guarda aunque HomeScreen ya no esté en composición.
+                        chatCoordinator.onIncomingWebSocketMessage(
+                            conversationType = message.conversationType,
+                            conversationId = message.conversationId,
+                            senderUserId = message.senderUserId,
+                            cypherTextB64 = message.cypherTextB64,
+                            createdAt = message.createdAt?.toString() ?: java.time.LocalDateTime.now().toString(),
+                        )
                     }
 
                     if (!subscribed) {

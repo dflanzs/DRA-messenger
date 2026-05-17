@@ -2,21 +2,17 @@ package com.tfg.backend.SignalEnvelope.dto;
 
 import java.time.LocalDateTime;
 
-import com.tfg.backend.SignalEnvelope.SignalEnvelope;
-
 public class SignalMessageWSDto {
     private final Long envelopeId;
-    private final SignalEnvelope envelope; 
     private final Long senderUserId;
     private final Long conversationId;
-    private final String conversationType; 
+    private final String conversationType;
     private final Short cypherTextType;
     private final String cypherTextB64;
     private final LocalDateTime createdAt;
 
     public SignalMessageWSDto(
         Long envelopeId,
-        SignalEnvelope envelope,
         Long senderUserId,
         Long conversationId,
         String conversationType,
@@ -25,7 +21,6 @@ public class SignalMessageWSDto {
         LocalDateTime createdAt
     ) {
         this.envelopeId = envelopeId;
-        this.envelope = envelope;
         this.senderUserId = senderUserId;
         this.conversationId = conversationId;
         this.conversationType = conversationType;
@@ -36,10 +31,6 @@ public class SignalMessageWSDto {
 
     public Long getEnvelopeId() {
         return envelopeId;
-    }
-
-    public SignalEnvelope getEnvelope() {
-        return envelope;
     }
 
     public Long getSenderUserId() {
