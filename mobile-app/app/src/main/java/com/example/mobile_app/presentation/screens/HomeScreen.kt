@@ -152,6 +152,14 @@ fun HomeScreen(
         }
     }
 
+    // Refrescar la lista de usuarios cada vez que se abre el diálogo de creación de chat
+    LaunchedEffect(showCreateChatDialog) {
+        if (showCreateChatDialog) {
+            runCatching { chatCoordinator.refreshChats() }
+                .onFailure { Log.w(TAG, "No se pudo refrescar la lista de usuarios: ${it.message}") }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()

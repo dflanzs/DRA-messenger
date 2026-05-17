@@ -47,10 +47,14 @@ class ChatRepository(
     }
 
     suspend fun refreshFromServer() {
-        val currentUser = currentUserManager.getCurrentUser() ?: return
+        currentUserManager.getCurrentUser() ?: return
         val users = chatApiService.listActiveUsers()
-        val directChats = chatApiService.listPrivateChats()
-        val groupChats = chatApiService.listGroupChats()
+        // A failure loading chats must not discard the user list: the create-chat
+        // dialog depends on `users`, so chat fetches are isolated and degrade to empty.
+        val directChats = runCatching { chatApiService.listPrivateChats() }
+            .getOrElse { Log.w(TAG, "No se pudieron cargar los chats privados: ${it.message}"); emptyList() }
+        val groupChats = runCatching { chatApiService.listGroupChats() }
+            .getOrElse { Log.w(TAG, "No se pudieron cargar los chats de grupo: ${it.message}"); emptyList() }
 
         context.chatDataStore.edit { prefs ->
             val currentState = decodeState(prefs[CHAT_STATE_JSON_KEY])
