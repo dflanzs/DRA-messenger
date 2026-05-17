@@ -371,16 +371,6 @@ private fun ChatListItem(
                         text = chat.title,
                         style = MaterialTheme.typography.titleMedium,
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = chat.lastMessageText ?: "Sin mensajes todavía",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = chat.lastMessageAt ?: chat.createdAt,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
                 }
             }
         }
