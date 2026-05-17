@@ -22,7 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-includeBuild("libsignal/java")
-
 rootProject.name = "mobile-app"
 include(":app")

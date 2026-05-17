@@ -6,11 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.mobile_app"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.mobile_app"
@@ -40,6 +36,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
         jvmTarget = "17"
@@ -61,7 +58,7 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging.interceptor)
     implementation(libs.moshi)
-    implementation(libs.moshi.kotlin)
+    implementation("com.squareup.moshi:moshi-kotlin:1.15.1")
     implementation(libs.libsignal.android)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -73,4 +70,5 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
