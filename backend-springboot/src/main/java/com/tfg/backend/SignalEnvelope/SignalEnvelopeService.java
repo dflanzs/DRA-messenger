@@ -112,13 +112,18 @@ public class SignalEnvelopeService {
             User userReceiver = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario receptor no encontrado"));
 
-            logger.info("WS push grupo -> email={}, convId={}, envelopeId={}, dest=/queue/messages",
-                    userReceiver.getEmail(), wsMessage.getConversationId(), wsMessage.getEnvelopeId());
-            try {
-                messagingTemplate.convertAndSendToUser(userReceiver.getEmail(), "/queue/messages", wsMessage);
-                logger.info("WS push grupo OK -> {}", userReceiver.getEmail());
-            } catch (Exception ex) {
-                logger.error("WS push grupo FALLO -> {}", userReceiver.getEmail(), ex);
+            // El emisor ya guarda el mensaje localmente: solo se empuja a los demás.
+            // Misma cola que los privados (/queue/signal-messages): la app solo está
+            // suscrita ahí y el handler ya sabe enrutar por conversationType.
+            if (!id.equals(senderUserId)) {
+                logger.info("WS push grupo -> email={}, convId={}, envelopeId={}, dest=/queue/signal-messages",
+                        userReceiver.getEmail(), wsMessage.getConversationId(), wsMessage.getEnvelopeId());
+                try {
+                    messagingTemplate.convertAndSendToUser(userReceiver.getEmail(), "/queue/signal-messages", wsMessage);
+                    logger.info("WS push grupo OK -> {}", userReceiver.getEmail());
+                } catch (Exception ex) {
+                    logger.error("WS push grupo FALLO -> {}", userReceiver.getEmail(), ex);
+                }
             }
 
             envelopeIds.add(signalEnvelope.getId());
