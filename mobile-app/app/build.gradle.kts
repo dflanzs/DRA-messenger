@@ -1,8 +1,18 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
+
+// IP del backend leída de local.properties (clave `backend.ip`, gitignored).
+// Sirve de valor por defecto para la pantalla de configuración en dispositivos
+// reales; en el emulador siempre se usa 10.0.2.2 (ver NetworkConfig.isEmulator).
+val backendIp: String = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}.getProperty("backend.ip") ?: "10.0.2.2"
 
 android {
     namespace = "com.example.mobile_app"
@@ -14,7 +24,7 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-        buildConfigField("String", "BACKEND_BASE_URL", "\"http://10.0.2.2:8080/\"")
+        buildConfigField("String", "BACKEND_BASE_URL", "\"http://$backendIp:8080/\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

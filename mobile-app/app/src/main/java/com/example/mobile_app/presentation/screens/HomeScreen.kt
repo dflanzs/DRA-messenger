@@ -30,9 +30,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.example.mobile_app.BuildConfig
 import com.example.mobile_app.data.model.chat.ChatState
+import com.example.mobile_app.network.NetworkConfig
 import com.example.mobile_app.data.model.chat.LocalChatRecord
 import com.example.mobile_app.presentation.auth.AuthCoordinator
 import com.example.mobile_app.presentation.auth.toAuthUserMessage
@@ -63,6 +64,7 @@ fun HomeScreen(
     val TAG = "HomeScreen"
     val chatState by chatCoordinator.state.collectAsState(initial = ChatState())
     val currentUser = authCoordinator.currentUserManager.getCurrentUser()
+    val context = LocalContext.current
 
     // Paso 1: Bootstrap de claves Signal
     LaunchedEffect(signalCoordinator) {
@@ -97,11 +99,11 @@ fun HomeScreen(
             scope.launch {
                 runCatching {
                     Log.d(TAG, "Iniciando conexión a WebSocket...")
-                    Log.d(TAG, "Base URL: ${BuildConfig.BACKEND_BASE_URL}")
+                    Log.d(TAG, "Base URL: ${NetworkConfig.resolveBaseUrl(context)}")
 
                     val webSocketUseCases = WebSocketCoordinator.getWebSocketUseCases(
                         tokenManager = authCoordinator.tokenManager,
-                        baseUrl = BuildConfig.BACKEND_BASE_URL.trimEnd('/')
+                        baseUrl = NetworkConfig.resolveBaseUrl(context).trimEnd('/')
                     )
                     chatCoordinator.setWebSocketUseCases(webSocketUseCases)
 
