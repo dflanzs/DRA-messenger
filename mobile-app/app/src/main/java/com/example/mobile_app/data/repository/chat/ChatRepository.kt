@@ -9,6 +9,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.example.mobile_app.data.model.auth.UserResponseDto
 import com.example.mobile_app.data.model.chat.ChatState
 import com.example.mobile_app.data.model.chat.ChatUserDto
+import com.example.mobile_app.data.model.chat.CommunicationRequestDto
 import com.example.mobile_app.data.model.chat.CreateDirectChatRequestDto
 import com.example.mobile_app.data.model.chat.CreateGroupChatRequestDto
 import com.example.mobile_app.data.model.chat.DirectChatSummaryDto
@@ -55,6 +56,10 @@ class ChatRepository(
             .getOrElse { Log.w(TAG, "No se pudieron cargar los chats privados: ${it.message}"); emptyList() }
         val groupChats = runCatching { chatApiService.listGroupChats() }
             .getOrElse { Log.w(TAG, "No se pudieron cargar los chats de grupo: ${it.message}"); emptyList() }
+        val incomingRequests = runCatching { chatApiService.listIncomingRequests() }
+            .getOrElse { Log.w(TAG, "No se pudieron cargar las solicitudes recibidas: ${it.message}"); emptyList() }
+        val outgoingRequests = runCatching { chatApiService.listOutgoingRequests() }
+            .getOrElse { Log.w(TAG, "No se pudieron cargar las solicitudes enviadas: ${it.message}"); emptyList() }
 
         context.chatDataStore.edit { prefs ->
             val currentState = decodeState(prefs[CHAT_STATE_JSON_KEY])
@@ -73,6 +78,16 @@ class ChatRepository(
                         add(mapGroupChat(chat, users, currentUserSnapshot))
                     }
                 }
+                incomingRequests.forEach { request ->
+                    if (requestKey(request.id) !in hidden) {
+                        add(mapIncomingRequest(request))
+                    }
+                }
+                outgoingRequests.forEach { request ->
+                    if (requestKey(request.id) !in hidden) {
+                        add(mapOutgoingRequest(request))
+                    }
+                }
             }
             prefs[CHAT_STATE_JSON_KEY] = encodeState(
                 currentState.copy(
@@ -85,12 +100,54 @@ class ChatRepository(
     }
 
     suspend fun createDirectChat(targetUserId: Long): LocalChatRecord? {
-        val created = chatApiService.createDirectChat(CreateDirectChatRequestDto(targetUserId))
+        val result = chatApiService.createDirectChat(CreateDirectChatRequestDto(targetUserId))
         val currentUser = currentUserManager.getCurrentUser() ?: return null
-        val users = getUsersSnapshot()
-        val chat = mapDirectChat(created, users, currentUser)
-        upsertChat(chat)
+        val record = when (result.status) {
+            "ACTIVE" -> {
+                val chatDto = result.chat ?: return null
+                mapDirectChat(chatDto, getUsersSnapshot(), currentUser)
+            }
+            "PENDING" -> {
+                val request = result.request ?: return null
+                mapOutgoingRequest(request)
+            }
+            else -> return null
+        }
+        upsertChat(record)
+        return record
+    }
+
+    /**
+     * Acepta una solicitud de comunicación recibida: sustituye la fila pendiente
+     * por el chat activo recién creado.
+     */
+    suspend fun acceptRequest(requestId: Long): LocalChatRecord? {
+        val chatDto = chatApiService.acceptCommunicationRequest(requestId)
+        val currentUser = currentUserManager.getCurrentUser() ?: return null
+        val chat = mapDirectChat(chatDto, getUsersSnapshot(), currentUser)
+        context.chatDataStore.edit { prefs ->
+            val state = decodeState(prefs[CHAT_STATE_JSON_KEY])
+            val merged = state.chats
+                .filterNot { it.chatKey == requestKey(requestId) || it.chatKey == chat.chatKey }
+                .plus(chat)
+            prefs[CHAT_STATE_JSON_KEY] = encodeState(
+                state.copy(chats = merged.sortedByDescending { it.lastMessageAt ?: it.createdAt })
+            )
+        }
         return chat
+    }
+
+    /**
+     * Rechaza una solicitud de comunicación recibida: elimina la fila pendiente.
+     */
+    suspend fun rejectRequest(requestId: Long) {
+        chatApiService.rejectCommunicationRequest(requestId)
+        context.chatDataStore.edit { prefs ->
+            val state = decodeState(prefs[CHAT_STATE_JSON_KEY])
+            prefs[CHAT_STATE_JSON_KEY] = encodeState(
+                state.copy(chats = state.chats.filterNot { it.chatKey == requestKey(requestId) })
+            )
+        }
     }
 
     suspend fun createGroupChat(name: String, userIds: Set<Long>): LocalChatRecord? {
@@ -262,6 +319,32 @@ class ChatRepository(
         )
     }
 
+    private fun mapIncomingRequest(request: CommunicationRequestDto): LocalChatRecord =
+        LocalChatRecord(
+            chatKey = requestKey(request.id),
+            chatId = null,
+            type = "DIRECT",
+            title = request.requesterName,
+            memberIds = listOf(request.requesterId, request.targetId),
+            memberNames = listOf(request.requesterName, request.targetName),
+            createdAt = request.createdAt,
+            status = "PENDING_INCOMING",
+            requestId = request.id,
+        )
+
+    private fun mapOutgoingRequest(request: CommunicationRequestDto): LocalChatRecord =
+        LocalChatRecord(
+            chatKey = requestKey(request.id),
+            chatId = null,
+            type = "DIRECT",
+            title = request.targetName,
+            memberIds = listOf(request.requesterId, request.targetId),
+            memberNames = listOf(request.requesterName, request.targetName),
+            createdAt = request.createdAt,
+            status = "PENDING_OUTGOING",
+            requestId = request.id,
+        )
+
     private fun decodeState(rawJson: String?): ChatState {
         if (rawJson.isNullOrBlank()) {
             return ChatState()
@@ -290,6 +373,8 @@ class ChatRepository(
         private const val TAG = "ChatRepository"
 
         fun chatKey(type: String, id: Long): String = "$type:$id"
+
+        fun requestKey(id: Long): String = "REQUEST:$id"
     }
 }
 

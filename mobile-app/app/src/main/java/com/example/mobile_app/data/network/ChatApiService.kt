@@ -1,8 +1,10 @@
 package com.example.mobile_app.data.network
 
 import com.example.mobile_app.data.model.chat.ChatUserDto
+import com.example.mobile_app.data.model.chat.CommunicationRequestDto
 import com.example.mobile_app.data.model.chat.CreateDirectChatRequestDto
 import com.example.mobile_app.data.model.chat.CreateGroupChatRequestDto
+import com.example.mobile_app.data.model.chat.DirectChatResultDto
 import com.example.mobile_app.data.model.chat.DirectChatSummaryDto
 import com.example.mobile_app.data.model.chat.GroupChatSummaryDto
 import retrofit2.http.Body
@@ -23,7 +25,7 @@ interface ChatApiService {
     @POST("api/private-chats")
     suspend fun createDirectChat(
         @Body request: CreateDirectChatRequestDto,
-    ): DirectChatSummaryDto
+    ): DirectChatResultDto
 
     @POST("api/group-chats")
     suspend fun createGroupChat(
@@ -34,4 +36,20 @@ interface ChatApiService {
     suspend fun getGroupMembers(
         @Path("groupId") groupId: Long,
     ): Set<Long>
+
+    @GET("api/communication-requests/incoming")
+    suspend fun listIncomingRequests(): List<CommunicationRequestDto>
+
+    @GET("api/communication-requests/outgoing")
+    suspend fun listOutgoingRequests(): List<CommunicationRequestDto>
+
+    @POST("api/communication-requests/{id}/accept")
+    suspend fun acceptCommunicationRequest(
+        @Path("id") id: Long,
+    ): DirectChatSummaryDto
+
+    @POST("api/communication-requests/{id}/reject")
+    suspend fun rejectCommunicationRequest(
+        @Path("id") id: Long,
+    )
 }

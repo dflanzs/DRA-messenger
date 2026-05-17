@@ -33,9 +33,24 @@ data class GroupChatSummaryDto(
     val createdAt: String,
 )
 
+data class CommunicationRequestDto(
+    val id: Long,
+    val requesterId: Long,
+    val requesterName: String,
+    val targetId: Long,
+    val targetName: String,
+    val createdAt: String,
+)
+
+data class DirectChatResultDto(
+    val status: String,
+    val chat: DirectChatSummaryDto? = null,
+    val request: CommunicationRequestDto? = null,
+)
+
 data class LocalChatRecord(
     val chatKey: String,
-    val chatId: Long,
+    val chatId: Long? = null,
     val type: String,
     val title: String,
     val memberIds: List<Long>,
@@ -43,6 +58,8 @@ data class LocalChatRecord(
     val createdAt: String,
     val lastMessageText: String? = null,
     val lastMessageAt: String? = null,
+    val status: String = "ACTIVE",
+    val requestId: Long? = null,
 )
 
 data class LocalChatMessageRecord(

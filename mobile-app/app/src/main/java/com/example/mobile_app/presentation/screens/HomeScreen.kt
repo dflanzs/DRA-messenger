@@ -19,6 +19,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -237,6 +238,22 @@ fun HomeScreen(
                             onClick = {
                                 navController.navigate("chat/${Uri.encode(chat.chatKey)}")
                             },
+                            onAccept = {
+                                chat.requestId?.let { requestId ->
+                                    scope.launch {
+                                        runCatching { chatCoordinator.acceptCommunicationRequest(requestId) }
+                                            .onFailure { Log.w(TAG, "No se pudo aceptar la solicitud: ${it.message}") }
+                                    }
+                                }
+                            },
+                            onReject = {
+                                chat.requestId?.let { requestId ->
+                                    scope.launch {
+                                        runCatching { chatCoordinator.rejectCommunicationRequest(requestId) }
+                                            .onFailure { Log.w(TAG, "No se pudo rechazar la solicitud: ${it.message}") }
+                                    }
+                                }
+                            },
                         )
                     }
                 }
@@ -288,27 +305,72 @@ fun HomeScreen(
 private fun ChatListItem(
     chat: LocalChatRecord,
     onClick: () -> Unit,
+    onAccept: () -> Unit,
+    onReject: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = chat.title,
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = chat.lastMessageText ?: "Sin mensajes todavía",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = chat.lastMessageAt ?: chat.createdAt,
-                style = MaterialTheme.typography.bodySmall,
-            )
+    when (chat.status) {
+        "PENDING_INCOMING" -> {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = chat.title,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Solicita comunicación. No perteneces a tus círculos de confianza",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(onClick = onAccept) {
+                            Text("Aceptar")
+                        }
+                        TextButton(onClick = onReject) {
+                            Text("Rechazar")
+                        }
+                    }
+                }
+            }
+        }
+        "PENDING_OUTGOING" -> {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = chat.title,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Pendiente de consentimiento",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        }
+        else -> {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onClick),
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = chat.title,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = chat.lastMessageText ?: "Sin mensajes todavía",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = chat.lastMessageAt ?: chat.createdAt,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
         }
     }
 }

@@ -36,6 +36,10 @@ class ChatCoordinator(
 
     suspend fun deleteChatLocally(chatKey: String) = repository.deleteChatLocally(chatKey)
 
+    suspend fun acceptCommunicationRequest(requestId: Long) = repository.acceptRequest(requestId)
+
+    suspend fun rejectCommunicationRequest(requestId: Long) = repository.rejectRequest(requestId)
+
     suspend fun saveIncomingWebSocketMessage(
         conversationType: String,
         conversationId: Long,
