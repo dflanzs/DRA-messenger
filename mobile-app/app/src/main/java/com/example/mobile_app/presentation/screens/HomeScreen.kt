@@ -283,7 +283,6 @@ fun HomeScreen(
                         val chat = chatCoordinator.createDirectChat(targetUserId)
                         if (chat != null) {
                             showCreateChatDialog = false
-                            navController.navigate("chat/${Uri.encode(chat.chatKey)}")
                         }
                     }
                 },
@@ -292,7 +291,6 @@ fun HomeScreen(
                         val chat = chatCoordinator.createGroupChat(name, userIds)
                         if (chat != null) {
                             showCreateChatDialog = false
-                            navController.navigate("chat/${Uri.encode(chat.chatKey)}")
                         }
                     }
                 },
