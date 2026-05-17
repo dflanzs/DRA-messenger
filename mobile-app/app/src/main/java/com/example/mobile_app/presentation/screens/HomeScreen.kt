@@ -40,6 +40,7 @@ import com.example.mobile_app.presentation.chat.ChatCoordinator
 import com.example.mobile_app.presentation.signal.SignalCoordinator
 import com.example.mobile_app.presentation.websocket.WebSocketCoordinator
 import androidx.navigation.NavController
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -149,6 +150,19 @@ fun HomeScreen(
                     isConnectingWebSocket = false
                     Log.e(TAG, "Error en WebSocket", throwable)
                 }
+            }
+        }
+    }
+
+    // Sondeo periódico: refresca chats, grupos y solicitudes de comunicación mientras
+    // HomeScreen está visible. Los eventos WebSocket solo entregan mensajes, no avisan
+    // de chats/grupos/solicitudes nuevos creados por otros usuarios.
+    LaunchedEffect(webSocketConnected) {
+        if (webSocketConnected) {
+            while (true) {
+                delay(5000)
+                runCatching { chatCoordinator.refreshChats() }
+                    .onFailure { Log.w(TAG, "Sondeo: no se pudo refrescar: ${it.message}") }
             }
         }
     }
