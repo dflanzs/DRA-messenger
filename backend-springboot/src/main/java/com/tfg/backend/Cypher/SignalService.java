@@ -65,6 +65,25 @@ public class SignalService {
             userAccount.SetUser(user);
         }
 
+        // If the account is already bootstrapped (has active keys), do not recreate them.
+        // This makes the endpoint idempotent: re-login does not regenerate Signal keys.
+        if (accountAlreadyExists
+                && userAccount.GetActiveSignedPreKey() != null
+                && userAccount.GetActiveKyberPreKey() != null
+                && userAccount.GetActiveIdentityKeyPublic() != null) {
+            int existingOneTimeCount = 0;
+            for (SignalOneTimePreKey existingOneTimePreKey : signalOneTimePreKeyRepository.getByUserId(userId)) {
+                if (existingOneTimePreKey != null && existingOneTimePreKey.GetConsumedAt() == null) {
+                    existingOneTimeCount++;
+                }
+            }
+            return new SignalBootstrapResponseDto(
+                    userAccount.GetActiveSignedPreKey().GetPreKeyId(),
+                    userAccount.GetActiveKyberPreKey().GetPreKeyId(),
+                    existingOneTimeCount
+            );
+        }
+
         // Verify that all required fields are present in the request, if not throw an exception
         if (request.getRegistrationId() == null ||
             request.getIdentityKeyPublicB64() == null ||
@@ -136,12 +155,14 @@ public class SignalService {
         // Create new keys
         // Create and persist new signed pre-key and kyber pre-key, capture managed instances
         SignalSignedPreKey newSignedPreKey = new SignalSignedPreKey();
+        newSignedPreKey.SetPreKeyId(request.getSignedPreKeyId());
         newSignedPreKey.SetPublicKey(signedPreKeyPublicBytes);
         newSignedPreKey.SetSignature(signedPreKeySignatureBytes);
         newSignedPreKey.SetUser(userAccount.GetUser());
         SignalSignedPreKey savedSignedPreKey = signalSignedPreKeyRepository.save(newSignedPreKey);
 
         SignalKyberPreKey newKyberPreKey = new SignalKyberPreKey();
+        newKyberPreKey.SetPreKeyId(request.getKyberPreKeyId());
         newKyberPreKey.SetPublicKey(kyberPreKeyPublicBytes);
         newKyberPreKey.SetSignature(kyberPreKeySignatureBytes);
         newKyberPreKey.SetUser(userAccount.GetUser());
@@ -162,6 +183,7 @@ public class SignalService {
             byte[] oneTimePreKeyPublicBytes = decoder.decode(signalOneTimePreKeyDto.getPublicKeyB64());
 
             SignalOneTimePreKey newOneTimePreKey = new SignalOneTimePreKey();
+            newOneTimePreKey.SetPreKeyId(signalOneTimePreKeyDto.getPreKeyId());
             newOneTimePreKey.SetPublicKey(oneTimePreKeyPublicBytes);
             newOneTimePreKey.SetUser(userAccount.GetUser());
             signalOneTimePreKeyRepository.save(newOneTimePreKey);
@@ -217,6 +239,7 @@ public class SignalService {
             }
 
             SignalOneTimePreKey newOneTimePreKey = new SignalOneTimePreKey();
+            newOneTimePreKey.SetPreKeyId(oneTimePreKeyDto.getPreKeyId());
             newOneTimePreKey.SetPublicKey(oneTimePreKeyPublicBytes);
             newOneTimePreKey.SetUser(userAccount.GetUser());
             signalOneTimePreKeyRepository.save(newOneTimePreKey);
