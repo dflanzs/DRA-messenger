@@ -35,6 +35,12 @@ class ChatCoordinator(
     // en composición (p. ej. estando dentro de ChatDetailScreen).
     private val coordinatorScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    // Dedupe entre push WS en vivo y drenado de pendientes: ambos pueden entregar
+    // el mismo envelopeId en una ventana de milisegundos. Solo se procesa una vez.
+    private val processedEnvelopes = java.util.Collections.synchronizedSet(mutableSetOf<Long>())
+
+    private fun claimEnvelope(envelopeId: Long): Boolean = processedEnvelopes.add(envelopeId)
+
     suspend fun refreshChats() {
         repository.refreshFromServer()
     }
@@ -70,6 +76,10 @@ class ChatCoordinator(
         cypherTextB64: String,
         createdAt: String,
     ) {
+        if (!claimEnvelope(envelopeId)) {
+            Log.d("ChatCoordinator", "envelope $envelopeId ya procesado, ignorando push")
+            return
+        }
         coordinatorScope.launch {
             val saved = runCatching {
                 repository.saveIncomingWebSocketMessage(
@@ -89,6 +99,10 @@ class ChatCoordinator(
             .getOrNull().orEmpty()
         Log.d("ChatCoordinator", "pendientes recibidos: ${pending.size}")
         for (msg in pending) {
+            if (!claimEnvelope(msg.envelopeId)) {
+                Log.d("ChatCoordinator", "envelope ${msg.envelopeId} ya procesado, ignorando pendiente")
+                continue
+            }
             val saved = runCatching {
                 repository.saveIncomingWebSocketMessage(
                     conversationType = msg.conversationType,

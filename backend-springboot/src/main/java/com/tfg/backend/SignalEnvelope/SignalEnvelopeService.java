@@ -222,14 +222,21 @@ public class SignalEnvelopeService {
 
     @Transactional
     public void acknowledgeMessageDelivered(Long envelopeId, Long userId) {
-        SignalEnvelope envelope = signalEnvelopeRepository.findById(envelopeId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mensaje no encontrado"));
+        SignalEnvelope envelope = signalEnvelopeRepository.findById(envelopeId).orElse(null);
+        if (envelope == null) {
+            // Idempotente: otro ack en paralelo ya borró el sobre. No es error.
+            return;
+        }
 
         if (!envelope.getReceiver().getId().equals(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado para reconocer este mensaje");
         }
 
-        // Group messages are one envelope per user so we can directly remove them from server. Status on sender will be shown as delivered if envelope is no longer on the server
-        signalEnvelopeRepository.delete(envelope);
+        try {
+            signalEnvelopeRepository.delete(envelope);
+        } catch (org.springframework.orm.ObjectOptimisticLockingFailureException ex) {
+            // Carrera: otra petición borró la fila entre el findById y el delete.
+            logger.info("ack idempotente: envelope {} ya borrado por otra transacción", envelopeId);
+        }
     }
 }
