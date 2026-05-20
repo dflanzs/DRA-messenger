@@ -26,15 +26,6 @@ class WebSocketUseCases(
     }
     
     /**
-     * Suscribirse a mensajes generales
-     */
-    suspend fun subscribeToMessages(
-        onMessage: (String) -> Unit
-    ): Boolean {
-        return webSocketRepository.subscribeToMessages(onMessage)
-    }
-    
-    /**
      * Enviar mensaje privado
      */
     suspend fun sendPrivateMessage(messageJson: String): Boolean {

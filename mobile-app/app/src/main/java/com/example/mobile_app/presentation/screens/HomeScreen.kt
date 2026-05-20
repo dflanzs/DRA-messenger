@@ -122,6 +122,7 @@ fun HomeScreen(
                         // Delega en ChatCoordinator (scope de vida de app): el mensaje se
                         // guarda aunque HomeScreen ya no esté en composición.
                         chatCoordinator.onIncomingWebSocketMessage(
+                            envelopeId = message.envelopeId,
                             conversationType = message.conversationType,
                             conversationId = message.conversationId,
                             senderUserId = message.senderUserId,
@@ -133,6 +134,10 @@ fun HomeScreen(
                     if (!subscribed) {
                         Log.w(TAG, "Suscripción retornó false, pero continuando...")
                     }
+
+                    // Drenar mensajes que llegaron mientras el receptor estaba offline.
+                    runCatching { chatCoordinator.consumePendingMessages() }
+                        .onFailure { Log.w(TAG, "No se pudieron consumir pendientes: ${it.message}") }
 
                     if (!chatsLoaded) {
                         runCatching {

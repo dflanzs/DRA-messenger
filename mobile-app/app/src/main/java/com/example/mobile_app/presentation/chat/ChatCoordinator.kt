@@ -35,6 +35,12 @@ class ChatCoordinator(
     // en composición (p. ej. estando dentro de ChatDetailScreen).
     private val coordinatorScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    // Dedupe entre push WS en vivo y drenado de pendientes: ambos pueden entregar
+    // el mismo envelopeId en una ventana de milisegundos. Solo se procesa una vez.
+    private val processedEnvelopes = java.util.Collections.synchronizedSet(mutableSetOf<Long>())
+
+    private fun claimEnvelope(envelopeId: Long): Boolean = processedEnvelopes.add(envelopeId)
+
     suspend fun refreshChats() {
         repository.refreshFromServer()
     }
@@ -63,18 +69,51 @@ class ChatCoordinator(
      * que el mensaje se guarde aunque HomeScreen haya salido de composición.
      */
     fun onIncomingWebSocketMessage(
+        envelopeId: Long,
         conversationType: String,
         conversationId: Long,
         senderUserId: Long,
         cypherTextB64: String,
         createdAt: String,
     ) {
+        if (!claimEnvelope(envelopeId)) {
+            Log.d("ChatCoordinator", "envelope $envelopeId ya procesado, ignorando push")
+            return
+        }
         coordinatorScope.launch {
-            runCatching {
+            val saved = runCatching {
                 repository.saveIncomingWebSocketMessage(
                     conversationType, conversationId, senderUserId, cypherTextB64, createdAt,
                 )
             }.onFailure { Log.w("ChatCoordinator", "No se pudo guardar mensaje entrante: ${it.message}") }
+                .isSuccess
+            if (saved) {
+                repository.ackMessageDelivered(envelopeId)
+            }
+        }
+    }
+
+    suspend fun consumePendingMessages() {
+        val pending = runCatching { repository.fetchPendingMessages() }
+            .onFailure { Log.w("ChatCoordinator", "fetch pending falló: ${it.message}") }
+            .getOrNull().orEmpty()
+        Log.d("ChatCoordinator", "pendientes recibidos: ${pending.size}")
+        for (msg in pending) {
+            if (!claimEnvelope(msg.envelopeId)) {
+                Log.d("ChatCoordinator", "envelope ${msg.envelopeId} ya procesado, ignorando pendiente")
+                continue
+            }
+            val saved = runCatching {
+                repository.saveIncomingWebSocketMessage(
+                    conversationType = msg.conversationType,
+                    conversationId = msg.conversationId,
+                    senderUserId = msg.senderUserId,
+                    cypherTextB64 = msg.cypherTextB64,
+                    createdAt = msg.createdAt?.toString() ?: java.time.LocalDateTime.now().toString(),
+                )
+            }.onFailure { Log.w("ChatCoordinator", "guardar pendiente ${msg.envelopeId} falló: ${it.message}") }
+                .isSuccess
+            if (saved) repository.ackMessageDelivered(msg.envelopeId)
         }
     }
 

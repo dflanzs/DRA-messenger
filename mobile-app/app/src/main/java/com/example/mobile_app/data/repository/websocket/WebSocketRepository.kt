@@ -102,26 +102,6 @@ class WebSocketRepository(
     }
 
     /**
-     * Suscribirse a mensajes generales
-     */
-    suspend fun subscribeToMessages(
-        onMessage: (String) -> Unit
-    ): Boolean {
-        return try {
-            stompClient?.subscribe(
-                destination = "/user/queue/messages",
-                id = "messages"
-            ) { message ->
-                Log.d(TAG, "Mensaje general recibido: ${message.take(50)}")
-                onMessage(message)
-            } ?: false
-        } catch (e: Exception) {
-            Log.e(TAG, "Error suscribiendo a messages", e)
-            false
-        }
-    }
-
-    /**
      * Enviar mensaje privado
      */
     suspend fun sendPrivateMessage(messageJson: String): Boolean {
