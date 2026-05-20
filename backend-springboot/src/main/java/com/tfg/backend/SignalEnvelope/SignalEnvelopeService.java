@@ -86,6 +86,11 @@ public class SignalEnvelopeService {
 
         Decoder decoder = java.util.Base64.getDecoder();
         for (Long id : chatUserIds) {
+            if (id.equals(senderUserId)) {
+                // El emisor guarda su propio mensaje en local; no se persiste sobre
+                // ni se hace push para él (evita duplicado al drenar pendientes).
+                continue;
+            }
             User recipient = userService.getById(id);
             SignalEnvelope signalEnvelope = new SignalEnvelope(
                     sender,
@@ -112,18 +117,15 @@ public class SignalEnvelopeService {
             User userReceiver = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario receptor no encontrado"));
 
-            // El emisor ya guarda el mensaje localmente: solo se empuja a los demás.
             // Misma cola que los privados (/queue/signal-messages): la app solo está
             // suscrita ahí y el handler ya sabe enrutar por conversationType.
-            if (!id.equals(senderUserId)) {
-                logger.info("WS push grupo -> email={}, convId={}, envelopeId={}, dest=/queue/signal-messages",
-                        userReceiver.getEmail(), wsMessage.getConversationId(), wsMessage.getEnvelopeId());
-                try {
-                    messagingTemplate.convertAndSendToUser(userReceiver.getEmail(), "/queue/signal-messages", wsMessage);
-                    logger.info("WS push grupo OK -> {}", userReceiver.getEmail());
-                } catch (Exception ex) {
-                    logger.error("WS push grupo FALLO -> {}", userReceiver.getEmail(), ex);
-                }
+            logger.info("WS push grupo -> email={}, convId={}, envelopeId={}, dest=/queue/signal-messages",
+                    userReceiver.getEmail(), wsMessage.getConversationId(), wsMessage.getEnvelopeId());
+            try {
+                messagingTemplate.convertAndSendToUser(userReceiver.getEmail(), "/queue/signal-messages", wsMessage);
+                logger.info("WS push grupo OK -> {}", userReceiver.getEmail());
+            } catch (Exception ex) {
+                logger.error("WS push grupo FALLO -> {}", userReceiver.getEmail(), ex);
             }
 
             envelopeIds.add(signalEnvelope.getId());
