@@ -7,6 +7,7 @@ import com.example.mobile_app.data.model.chat.CreateGroupChatRequestDto
 import com.example.mobile_app.data.model.chat.DirectChatResultDto
 import com.example.mobile_app.data.model.chat.DirectChatSummaryDto
 import com.example.mobile_app.data.model.chat.GroupChatSummaryDto
+import com.example.mobile_app.data.model.signal.SignalMessageWSDto
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -51,5 +52,10 @@ interface ChatApiService {
     @POST("api/communication-requests/{id}/reject")
     suspend fun rejectCommunicationRequest(
         @Path("id") id: Long,
+    )
+
+    @POST("api/messages/{envelopeId}/ack-delivered")
+    suspend fun ackMessageDelivered(
+        @Path("envelopeId") envelopeId: Long,
     )
 }

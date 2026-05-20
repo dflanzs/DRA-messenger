@@ -63,6 +63,7 @@ class ChatCoordinator(
      * que el mensaje se guarde aunque HomeScreen haya salido de composición.
      */
     fun onIncomingWebSocketMessage(
+        envelopeId: Long,
         conversationType: String,
         conversationId: Long,
         senderUserId: Long,
@@ -70,11 +71,15 @@ class ChatCoordinator(
         createdAt: String,
     ) {
         coordinatorScope.launch {
-            runCatching {
+            val saved = runCatching {
                 repository.saveIncomingWebSocketMessage(
                     conversationType, conversationId, senderUserId, cypherTextB64, createdAt,
                 )
             }.onFailure { Log.w("ChatCoordinator", "No se pudo guardar mensaje entrante: ${it.message}") }
+                .isSuccess
+            if (saved) {
+                repository.ackMessageDelivered(envelopeId)
+            }
         }
     }
 

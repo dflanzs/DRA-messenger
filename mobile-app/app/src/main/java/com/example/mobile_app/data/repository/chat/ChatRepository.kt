@@ -195,6 +195,11 @@ class ChatRepository(
         )
     }
 
+    suspend fun ackMessageDelivered(envelopeId: Long) {
+        runCatching { chatApiService.ackMessageDelivered(envelopeId) }
+            .onFailure { Log.w(TAG, "ackMessageDelivered($envelopeId) falló: ${it.message}") }
+    }
+
     suspend fun saveOutgoingMessage(
         chatKey: String,
         senderUserId: Long,

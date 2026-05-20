@@ -122,6 +122,7 @@ fun HomeScreen(
                         // Delega en ChatCoordinator (scope de vida de app): el mensaje se
                         // guarda aunque HomeScreen ya no esté en composición.
                         chatCoordinator.onIncomingWebSocketMessage(
+                            envelopeId = message.envelopeId,
                             conversationType = message.conversationType,
                             conversationId = message.conversationId,
                             senderUserId = message.senderUserId,
