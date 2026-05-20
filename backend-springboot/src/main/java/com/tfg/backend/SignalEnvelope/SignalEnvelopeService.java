@@ -186,7 +186,7 @@ public class SignalEnvelopeService {
 
     @Transactional(readOnly = true)
     public List<SignalMessageWSDto> getPendingMessages(Long userId) {
-        List<SignalEnvelope> pendingMessages = signalEnvelopeRepository.findByReceiver_IdAndStatus(userId, MessageStatus.PENDING.getValue());
+        List<SignalEnvelope> pendingMessages = signalEnvelopeRepository.findByReceiver_IdAndStatus(userId, MessageStatus.PENDING);
 
         List<SignalMessageWSDto> response = new ArrayList<>();
 
