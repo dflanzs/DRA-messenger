@@ -195,6 +195,9 @@ class ChatRepository(
         )
     }
 
+    suspend fun fetchPendingMessages(): List<com.example.mobile_app.data.model.signal.SignalMessageWSDto> =
+        chatApiService.getPendingMessages()
+
     suspend fun ackMessageDelivered(envelopeId: Long) {
         runCatching { chatApiService.ackMessageDelivered(envelopeId) }
             .onFailure { Log.w(TAG, "ackMessageDelivered($envelopeId) falló: ${it.message}") }

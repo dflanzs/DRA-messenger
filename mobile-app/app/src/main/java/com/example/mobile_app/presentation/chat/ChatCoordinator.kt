@@ -83,6 +83,26 @@ class ChatCoordinator(
         }
     }
 
+    suspend fun consumePendingMessages() {
+        val pending = runCatching { repository.fetchPendingMessages() }
+            .onFailure { Log.w("ChatCoordinator", "fetch pending falló: ${it.message}") }
+            .getOrNull().orEmpty()
+        Log.d("ChatCoordinator", "pendientes recibidos: ${pending.size}")
+        for (msg in pending) {
+            val saved = runCatching {
+                repository.saveIncomingWebSocketMessage(
+                    conversationType = msg.conversationType,
+                    conversationId = msg.conversationId,
+                    senderUserId = msg.senderUserId,
+                    cypherTextB64 = msg.cypherTextB64,
+                    createdAt = msg.createdAt?.toString() ?: java.time.LocalDateTime.now().toString(),
+                )
+            }.onFailure { Log.w("ChatCoordinator", "guardar pendiente ${msg.envelopeId} falló: ${it.message}") }
+                .isSuccess
+            if (saved) repository.ackMessageDelivered(msg.envelopeId)
+        }
+    }
+
     suspend fun saveOutgoingMessage(
         chatKey: String,
         senderUserId: Long,

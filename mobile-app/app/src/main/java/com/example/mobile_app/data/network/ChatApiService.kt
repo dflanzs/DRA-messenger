@@ -58,4 +58,7 @@ interface ChatApiService {
     suspend fun ackMessageDelivered(
         @Path("envelopeId") envelopeId: Long,
     )
+
+    @GET("api/messages/pending")
+    suspend fun getPendingMessages(): List<SignalMessageWSDto>
 }

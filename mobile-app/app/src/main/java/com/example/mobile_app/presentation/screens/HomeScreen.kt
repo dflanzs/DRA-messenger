@@ -135,6 +135,10 @@ fun HomeScreen(
                         Log.w(TAG, "Suscripción retornó false, pero continuando...")
                     }
 
+                    // Drenar mensajes que llegaron mientras el receptor estaba offline.
+                    runCatching { chatCoordinator.consumePendingMessages() }
+                        .onFailure { Log.w(TAG, "No se pudieron consumir pendientes: ${it.message}") }
+
                     if (!chatsLoaded) {
                         runCatching {
                             chatCoordinator.refreshChats()
