@@ -5,7 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
-import org.mockito.Mock;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 import com.tfg.backend.Security.CustomUserDetailsService;
 import com.tfg.backend.Security.JwtAuthenticationFilter;
@@ -29,13 +29,13 @@ class UserControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-        @Mock
-        private UserService userService;
+    @MockBean
+    private UserService userService;
 
-        @Mock
+    @MockBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
-        @Mock
+    @MockBean
     private CustomUserDetailsService customUserDetailsService;
 
     @Test
