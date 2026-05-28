@@ -39,8 +39,15 @@ public class GroupChatController {
 
     @GetMapping
     @PreAuthorize("@authorizationService.isAdmin(authentication)")
-    public List<GroupChat> list() {
-        return groupChatRepository.findAll();
+    public List<GroupChatSummaryDto> list() {
+        return groupChatRepository.findAll().stream()
+            .map(groupChat -> new GroupChatSummaryDto(
+                groupChat.getId(),
+                groupChat.getName(),
+                groupChat.getUserIds(),
+                groupChat.getCreatedAt()
+            ))
+            .toList();
     }
 
     @GetMapping("/me")

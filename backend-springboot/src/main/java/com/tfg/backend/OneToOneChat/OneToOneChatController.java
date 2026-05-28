@@ -41,8 +41,17 @@ public class OneToOneChatController {
 	@ResponseBody
 	@PreAuthorize("@authorizationService.isAdmin(authentication)")
 	@GetMapping
-	public List<OneToOneChat> list() {
-		return oneToOneChatRepository.findAll();
+	public List<DirectChatSummaryDto> list() {
+		// Admin view has no "self" perspective, so otherUserName defaults to user2's name.
+		return oneToOneChatRepository.findAll().stream()
+			.map(chat -> new DirectChatSummaryDto(
+				chat.getId(),
+				chat.getUser1().getId(),
+				chat.getUser2().getId(),
+				chat.getUser2().getName(),
+				chat.getCreatedAt()
+			))
+			.toList();
 	}
 
 	@ResponseBody
