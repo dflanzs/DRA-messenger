@@ -1,7 +1,9 @@
 package com.tfg.backend.Auth;
 
+import com.tfg.backend.Audit.AuditService;
 import com.tfg.backend.Auth.dto.LoginDto;
 import com.tfg.backend.Auth.dto.RegisterRequestDto;
+import com.tfg.backend.Enums.AuditAction;
 import com.tfg.backend.Enums.UserRole;
 import com.tfg.backend.Notifications.NotificationService;
 import com.tfg.backend.Notifications.NotificationType;
@@ -32,6 +34,7 @@ public class AuthService {
     private final EmailService emailService;
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final NotificationService notificationService;
+    private final AuditService auditService;
 
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
@@ -39,7 +42,7 @@ public class AuthService {
     public AuthService(UserRepository userRepository, UserService userService, PasswordEncoder passwordEncoder,
                       AuthenticationManager authenticationManager, EmailService emailService,
                       EmailVerificationTokenRepository emailVerificationTokenRepository,
-                      NotificationService notificationService) {
+                      NotificationService notificationService, AuditService auditService) {
         this.userRepository = userRepository;
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
@@ -47,6 +50,7 @@ public class AuthService {
         this.emailService = emailService;
         this.emailVerificationTokenRepository = emailVerificationTokenRepository;
         this.notificationService = notificationService;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -74,7 +78,8 @@ public class AuthService {
         user.setRole(UserRole.USER);
 
         // Persistir usuario pendiente de verificacion para poder activarlo con el token
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        auditService.record(AuditAction.REGISTER_USER, savedUser.getId());
 
         // Generar token de verificación
         String verificationToken = UUID.randomUUID().toString();
@@ -116,6 +121,8 @@ public class AuthService {
         verificationToken.setUsed(true);
         emailVerificationTokenRepository.save(verificationToken);
 
+        auditService.record(AuditAction.VERIFY_USER_EMAIL, verifiedUser.getId());
+
         // Crear notificación para admins
         createNotificationForAdmins("Nuevo usuario esperando aprobación",
             "El usuario " + user.getName() + " (" + user.getEmail() + ") ha verificado su correo y espera aprobación.");
@@ -130,6 +137,7 @@ public class AuthService {
 
         user.setAdminApproved(true);
         User approvedUser = userRepository.save(user);
+        auditService.record(AuditAction.VALIDATE_USER, approvedUser.getId());
 
         // Enviar email de aprobación
         emailService.sendApprovalNotificationEmail(user.getEmail(), user.getName());

@@ -1,6 +1,8 @@
 import api from './client';
 import type {
   AdminStats,
+  AuditAction,
+  AuditLog,
   GroupChat,
   Message,
   PrivateChat,
@@ -8,6 +10,13 @@ import type {
   User,
   UserRole,
 } from '../types';
+
+export interface AuditFilters {
+  userId?: number;
+  action?: AuditAction;
+  from?: number;
+  to?: number;
+}
 
 export async function getStats(): Promise<AdminStats> {
   const [users, messages, groupChats, privateChats, trustCircles] = await Promise.all([
@@ -40,6 +49,16 @@ export async function updateUserRole(userId: number, role: UserRole): Promise<Us
 
 export async function deleteUser(userId: number): Promise<void> {
   await api.delete(`/api/users/${userId}`);
+}
+
+export async function getAuditLogs(filters: AuditFilters = {}): Promise<AuditLog[]> {
+  const params: Record<string, string | number> = {};
+  if (filters.userId != null) params.userId = filters.userId;
+  if (filters.action) params.action = filters.action;
+  if (filters.from != null) params.from = filters.from;
+  if (filters.to != null) params.to = filters.to;
+  const { data } = await api.get<AuditLog[]>('/api/audit', { params });
+  return data;
 }
 
 export async function getGroupChats(): Promise<GroupChat[]> {
