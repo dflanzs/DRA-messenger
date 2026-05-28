@@ -61,7 +61,7 @@ public class GroupChatController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<GroupChatSummaryDto> getById(@PathVariable Long groupId, Principal principal) {
         Long currentUserId = userService.getByEmail(principal.getName()).getId();
-        GroupChat groupChat = groupChatRepository.findByIdAndDeletedAtIsNull(groupId).orElse(null);
+        GroupChat groupChat = groupChatRepository.findById(groupId).orElse(null);
         if (groupChat == null || !groupChat.getUserIds().contains(currentUserId)) {
             return ResponseEntity.notFound().build();
         }
@@ -87,14 +87,15 @@ public class GroupChatController {
     }
 
     @ResponseBody
-    @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @DeleteMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> delete(@PathVariable Long id, Principal principal) {
         groupcChatService.delete(id, principal);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/add/user/{userId}/group/{groupId}")    
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<String> addUserToGroupChat(
             @PathVariable Long userId,
             @PathVariable Long groupId,
@@ -106,6 +107,7 @@ public class GroupChatController {
 
     @ResponseBody
     @GetMapping("/remove/user/{userId}/group/{groupId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<String> removeUserFromGroupChat(
             @PathVariable Long userId,
             @PathVariable Long groupId,
@@ -116,6 +118,7 @@ public class GroupChatController {
     }
 
     @GetMapping("/{groupId}/users")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Set<Long>> getUsersInGroupChat(
             @PathVariable Long groupId,
             Principal principal

@@ -68,7 +68,11 @@ public class GroupChatService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Grupo no encontrado");
         }
 
+        Set<Long> memberIds = groupChatRepository.findById(id).map(GroupChat::getUserIds).orElse(Set.of());
         Long currentUserId = userService.getByEmail(principal.getName()).getId();
+        if (!memberIds.contains(currentUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No eres miembro de este grupo");
+        }
         groupChatRepository.deleteById(id);
         auditService.record(AuditAction.DELETE_GROUP_CHAT, currentUserId);
     }
@@ -96,6 +100,7 @@ public class GroupChatService {
         }
 
         groupChat.getUserIds().add(userId);
+        groupChat.setUpdatedAt(java.time.LocalDateTime.now());
         groupChatRepository.save(groupChat);
         auditService.record(AuditAction.ADD_USER_TO_GROUP_CHAT, currentUser.getId());
 
@@ -124,6 +129,7 @@ public class GroupChatService {
         }
 
         groupChat.getUserIds().remove(userId);
+        groupChat.setUpdatedAt(java.time.LocalDateTime.now());
         groupChatRepository.save(groupChat);
         auditService.record(AuditAction.REMOVE_USER_FROM_GROUP_CHAT, currentUser.getId());
 

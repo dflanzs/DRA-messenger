@@ -10,8 +10,8 @@ public interface GroupChatRepository extends JpaRepository<GroupChat, Long> {
     
     boolean existsByIdAndUsers_Id(Long groupChatId, Long userId);
 
-    Optional<GroupChat> findByIdAndDeletedAtIsNull(Long id);
+    Optional<GroupChat> findById(Long id);
 
-    @Query("SELECT DISTINCT g FROM GroupChat g JOIN g.users u WHERE g.deletedAt IS NULL AND u.id = :userId")
+    @Query("SELECT DISTINCT g FROM GroupChat g JOIN g.users u WHERE u.id = :userId")
     List<GroupChat> findAllActiveByUserId(@Param("userId") Long userId);
 }
