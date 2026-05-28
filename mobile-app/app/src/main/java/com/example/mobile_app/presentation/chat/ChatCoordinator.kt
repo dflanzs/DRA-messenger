@@ -49,7 +49,7 @@ class ChatCoordinator(
 
     suspend fun createGroupChat(name: String, userIds: Set<Long>) = repository.createGroupChat(name, userIds)
 
-    suspend fun deleteChatLocally(chatKey: String) = repository.deleteChatLocally(chatKey)
+    suspend fun deleteChat(chatKey: String) = repository.deleteChat(chatKey)
 
     suspend fun acceptCommunicationRequest(requestId: Long) = repository.acceptRequest(requestId)
 

@@ -96,7 +96,7 @@ fun ChatDetailScreen(
                     TextButton(
                         onClick = {
                             scope.launch {
-                                chatCoordinator.deleteChatLocally(chatKey)
+                                chatCoordinator.deleteChat(chatKey)
                                 navController.popBackStack()
                             }
                         },
@@ -198,7 +198,7 @@ fun ChatMembersScreen(
             Button(
                 onClick = {
                     scope.launch {
-                        chatCoordinator.deleteChatLocally(chatKey)
+                        chatCoordinator.deleteChat(chatKey)
                         navController.popBackStack()
                     }
                 },
