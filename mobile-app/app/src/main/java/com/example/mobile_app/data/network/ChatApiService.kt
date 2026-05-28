@@ -9,6 +9,7 @@ import com.example.mobile_app.data.model.chat.DirectChatSummaryDto
 import com.example.mobile_app.data.model.chat.GroupChatSummaryDto
 import com.example.mobile_app.data.model.signal.SignalMessageWSDto
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
@@ -27,6 +28,16 @@ interface ChatApiService {
     suspend fun createDirectChat(
         @Body request: CreateDirectChatRequestDto,
     ): DirectChatResultDto
+
+    @DELETE("api/private-chats/{id}")
+    suspend fun deletePrivateChat(
+        @Path("id") id: Long,
+    )
+
+    @DELETE("api/group-chats/{id}")
+    suspend fun deleteGroupChat(
+        @Path("id") id: Long,
+    )
 
     @POST("api/group-chats")
     suspend fun createGroupChat(

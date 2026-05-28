@@ -159,6 +159,24 @@ class ChatRepository(
         return chat
     }
 
+    /**
+     * Borra un chat en el servidor (privado o de grupo, según su tipo) y luego lo
+     * elimina del estado local. Sin id de servidor degrada a borrado local.
+     */
+    suspend fun deleteChat(chatKey: String) {
+        val chat = getChat(chatKey)
+        val chatId = chat?.chatId
+        if (chatId != null) {
+            runCatching {
+                when (chat.type) {
+                    "DIRECT" -> chatApiService.deletePrivateChat(chatId)
+                    "GROUP" -> chatApiService.deleteGroupChat(chatId)
+                }
+            }.onFailure { Log.w(TAG, "Borrado de chat $chatKey en servidor falló: ${it.message}") }
+        }
+        deleteChatLocally(chatKey)
+    }
+
     suspend fun deleteChatLocally(chatKey: String) {
         context.chatDataStore.edit { prefs ->
             val state = decodeState(prefs[CHAT_STATE_JSON_KEY])
