@@ -95,11 +95,11 @@ public class GroupChatService {
             return ResponseEntity.notFound().build();
         }
 
-        if (groupChat.getUserIds().stream().anyMatch(user -> newUser.getId().equals(userId))) {
+        if (groupChat.getUserIds().contains(userId)) {
             return ResponseEntity.badRequest().body("User is already a member of the group chat.");
         }
 
-        groupChat.getUserIds().add(userId);
+        groupChat.addMember(newUser);
         groupChat.setUpdatedAt(java.time.LocalDateTime.now());
         groupChatRepository.save(groupChat);
         auditService.record(AuditAction.ADD_USER_TO_GROUP_CHAT, currentUser.getId());
@@ -124,11 +124,11 @@ public class GroupChatService {
             return ResponseEntity.notFound().build();
         }
 
-        if (!groupChat.getUserIds().stream().anyMatch(user -> newUser.getId().equals(userId))) {
+        if (!groupChat.getUserIds().contains(userId)) {
             return ResponseEntity.badRequest().body("User is not a member of the group chat.");
         }
 
-        groupChat.getUserIds().remove(userId);
+        groupChat.removeMember(newUser);
         groupChat.setUpdatedAt(java.time.LocalDateTime.now());
         groupChatRepository.save(groupChat);
         auditService.record(AuditAction.REMOVE_USER_FROM_GROUP_CHAT, currentUser.getId());
