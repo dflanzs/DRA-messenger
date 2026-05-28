@@ -19,13 +19,13 @@ public class Audit {
     private Long id;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "action")
+    @Column(name = "action", updatable = false)
     private AuditAction action;
 
-    @Column(name = "userId")
+    @Column(name = "userId", updatable = false)
     private Long userId;
 
-    @Column(name = "timestamp")
+    @Column(name = "timestamp", updatable = false)
     private Long timestamp;
 
     public Audit() {}
@@ -44,23 +44,11 @@ public class Audit {
         return action;
     }
 
-    public void setAction(AuditAction action) {
-        this.action = action;
-    }
-
     public Long getUserId() {
         return userId;
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
-
     public Long getTimestamp() {
         return timestamp;
-    }
-
-    public void setTimestamp(Long timestamp) {
-        this.timestamp = timestamp;
     }
 }
