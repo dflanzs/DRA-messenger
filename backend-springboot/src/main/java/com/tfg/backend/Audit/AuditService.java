@@ -6,8 +6,10 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AuditService {
@@ -15,6 +17,19 @@ public class AuditService {
 
     public AuditService(AuditRepository auditRepository) {
         this.auditRepository = auditRepository;
+    }
+
+    @Transactional
+    public Audit record(AuditAction action, Long userId) {
+        if (action == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Acción inválida");
+        }
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Id de usuario inválido");
+        }
+
+        Audit audit = new Audit(action, userId, System.currentTimeMillis());
+        return auditRepository.save(audit);
     }
 
     @Transactional(readOnly = true)
