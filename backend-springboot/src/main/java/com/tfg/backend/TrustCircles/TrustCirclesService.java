@@ -64,6 +64,10 @@ public class TrustCirclesService {
 	@Transactional
 	public TrustCircles addUserToCircle(Long circleId, Long userId) {
 		TrustCircles circle = getById(circleId);
+        if (circle.isConsentDomain() && circle.getMembers().size() >= 2) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No se pueden agregar miembros a un dominio de consentimiento cruzado");
+        }
+
 		User user = ensureUserExists(userId);
 		circle.addMember(user);
 		return trustCirclesRepository.save(circle);

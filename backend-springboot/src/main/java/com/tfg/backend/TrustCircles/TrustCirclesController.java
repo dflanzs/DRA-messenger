@@ -39,22 +39,10 @@ public class TrustCirclesController {
     }
 
     @PreAuthorize("@authorizationService.isAdmin(authentication)")
-    @GetMapping("/{id}")
-    public ResponseEntity<TrustCircles> get(@PathVariable Long id) {
-        return ResponseEntity.ok(trustCirclesService.getById(id));
-    }
-
-    @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         trustCirclesService.softDeleteCircle(id);
         return ResponseEntity.noContent().build();
-    }
-
-    @PreAuthorize("@authorizationService.isSelfOrAdmin(authentication, #userId)")
-    @GetMapping("/users/{userId}")
-    public List<TrustCircles> getUserCircles(@PathVariable Long userId, Principal principal) {
-        return trustCirclesService.getUserCircles(userId);
     }
 
     @PreAuthorize("@authorizationService.isAdmin(authentication)")
@@ -88,26 +76,6 @@ public class TrustCirclesController {
         Long currentUserId = getAuthenticatedUserId(principal);
         trustCirclesService.validateCircleMembership(circleId, currentUserId);
         return ResponseEntity.ok(trustCirclesService.removeUserFromCircle(circleId, userId));
-    }
-
-    @PreAuthorize("isAuthenticated()")
-    @PostMapping("/consents")
-    public ResponseEntity<TrustCircles> grantCrossConsent(@RequestBody CrossConsentDto dto,
-                                                          Principal principal) {
-        Long requesterId = getAuthenticatedUserId(principal);
-        TrustCircles consentDomain = trustCirclesService.grantCrossCircleConsent(requesterId, dto.getTargetUserId());
-        return ResponseEntity.ok(consentDomain);
-    }
-
-    @PreAuthorize("@authorizationService.isSelf(authentication, #userId)")
-    @GetMapping("/can-communicate/{userId}")
-    public ResponseEntity<Map<String, Boolean>> canCommunicate(
-        @PathVariable Long userId,
-        @RequestParam Long userId2,
-        Principal principal
-    ) {
-        boolean canCommunicate = trustCirclesService.canUsersCommunicate(userId, userId2);
-        return ResponseEntity.ok(Map.of("allowed", canCommunicate));
     }
 
     private Long getAuthenticatedUserId(Principal principal) {
