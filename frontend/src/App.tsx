@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './components/AppLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { AuditPage } from './pages/AuditPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { TrustCirclesPage } from './pages/TrustCirclesPage';
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/usuarios" element={<UsersPage />} />
           <Route path="/circulos" element={<TrustCirclesPage />} />
+          <Route path="/auditoria" element={<AuditPage />} />
           <Route path="/notificaciones" element={<NotificationsPage />} />
         </Route>
       </Route>
