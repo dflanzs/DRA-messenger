@@ -124,7 +124,7 @@ public class AuthService {
         auditService.record(AuditAction.VERIFY_USER_EMAIL, verifiedUser.getId());
 
         // Crear notificación para admins
-        createNotificationForAdmins("Nuevo usuario esperando aprobación",
+        createAdminNotification("Nuevo usuario esperando aprobación",
             "El usuario " + user.getName() + " (" + user.getEmail() + ") ha verificado su correo y espera aprobación.");
 
         return verifiedUser;
@@ -159,49 +159,48 @@ public class AuthService {
     }
 
     public User login(LoginDto loginDto) {
+        Authentication authentication;
         try {
-            // Autenticar con Spring Security
-            Authentication authentication = authenticationManager.authenticate(
+            authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                     loginDto.getEmail(),
                     loginDto.getPassword()
                 )
             );
-
-            // Obtener el usuario autenticado (solo si no está eliminado)
-            String email = authentication.getName();
-            User user = userRepository.findByEmailAndDeletedAtIsNull(email)
-                .orElseThrow(() -> new BadCredentialsException("Usuario no encontrado"));
-
-            // Verificar que el usuario verificó su email y fue aprobado
-            if (!user.isEmailVerified()) {
-                throw new BadCredentialsException("Por favor verifica tu correo electrónico");
-            }
-
-            if (!user.isAdminApproved()) {
-                throw new BadCredentialsException("Tu cuenta está pendiente de aprobación del administrador");
-            }
-
-            return userService.setOnlineStatusByEmail(email, true);
-
         } catch (BadCredentialsException e) {
+            // Credenciales realmente inválidas: mensaje genérico para no revelar si el correo existe.
             throw new BadCredentialsException("Invalid email or password");
         }
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmailAndDeletedAtIsNull(email)
+            .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
+
+        // Las credenciales ya son válidas aquí, así que estos estados de cuenta
+        // pueden comunicarse al cliente sin riesgo de enumeración.
+        if (!user.isEmailVerified()) {
+            throw new BadCredentialsException("Por favor verifica tu correo electrónico");
+        }
+
+        if (!user.isAdminApproved()) {
+            throw new BadCredentialsException("Tu cuenta está pendiente de aprobación del administrador");
+        }
+
+        return userService.setOnlineStatusByEmail(email, true);
     }
 
     public void logout(Long userId) {
         userService.setOnlineStatus(userId, false);
     }
 
-    private void createNotificationForAdmins(String title, String message) {
-        // Buscar todos los admins y crear notificación para cada uno
-        userRepository.findAllByDeletedAtIsNullAndRole(UserRole.ADMIN)
-            .forEach(admin -> notificationService.createNotification(
-                NotificationType.USER_REGISTRATION_PENDING,
-                title,
-                message,
-                admin.getId()
-            ));
+    private void createAdminNotification(String title, String message) {
+        // Bandeja compartida: una sola notificación para todos los admins (sin destinatario concreto).
+        notificationService.createNotification(
+            NotificationType.USER_REGISTRATION_PENDING,
+            title,
+            message,
+            null
+        );
     }
 }
 
