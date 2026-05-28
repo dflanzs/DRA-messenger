@@ -272,7 +272,9 @@ public class SignalService {
             signalOneTimePreKeyRepository.save(oneTimePreKey);
         }
 
-        String oneTimePreKeyString = java.util.Base64.getEncoder().encodeToString(oneTimePreKey.GetPublicKey());
+        String oneTimePreKeyString = oneTimePreKey != null
+                ? java.util.Base64.getEncoder().encodeToString(oneTimePreKey.GetPublicKey())
+                : null;
         String activeSignedPreKeyString = java.util.Base64.getEncoder().encodeToString(userAccount.GetActiveSignedPreKey().GetPublicKey());
         String activeSignedPreKeySignatureString = java.util.Base64.getEncoder().encodeToString(userAccount.GetActiveSignedPreKey().GetSignature());
         String activeIdentityKeyString = java.util.Base64.getEncoder().encodeToString(userAccount.GetActiveIdentityKeyPublic());
@@ -281,7 +283,7 @@ public class SignalService {
 
         return new SignalBundleResponseDto(
                 userAccount.GetRegistrationId(),
-                oneTimePreKey != null ? userAccount.GetActiveKyberPreKey().GetPreKeyId(): -1,
+                oneTimePreKey != null ? oneTimePreKey.GetPreKeyId() : -1,
                 oneTimePreKeyString,
                 userAccount.GetActiveSignedPreKey().GetPreKeyId(),
                 activeSignedPreKeyString,
