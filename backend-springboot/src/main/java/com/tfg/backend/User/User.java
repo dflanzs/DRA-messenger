@@ -59,6 +59,7 @@ public class User {
 	private boolean adminApproved = false;
 
 	@Transient
+	@JsonIgnore
 	private WebSocketSession socketSession;
 
 	@DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
