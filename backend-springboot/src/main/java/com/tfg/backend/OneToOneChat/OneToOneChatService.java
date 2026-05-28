@@ -99,6 +99,12 @@ public class OneToOneChatService {
         }
 
         Long currentUserId = userService.getByEmail(principal.getName()).getId();
+        Long[] userIds = oneToOneChatRepository.findById(id).get().getUserIds();
+
+        if (!userIds[0].equals(currentUserId) && !userIds[1].equals(currentUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para eliminar este chat");
+        }
+
         oneToOneChatRepository.deleteById(id);
         auditService.record(AuditAction.DELETE_OTO_CHAT, currentUserId);
     }
