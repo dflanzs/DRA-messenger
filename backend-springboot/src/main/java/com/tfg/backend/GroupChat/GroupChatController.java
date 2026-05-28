@@ -77,23 +77,7 @@ public class GroupChatController {
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<GroupChatSummaryDto> create(@RequestBody CreateGroupChatRequestDto request, Principal principal) {
-        if (request.name() == null || request.name().isBlank()) {
-            return ResponseEntity.badRequest().build();
-        }
-        Long currentUserId = userService.getByEmail(principal.getName()).getId();
-        GroupChat groupChat = new GroupChat();
-        groupChat.setName(request.name());
-        groupChat.addMember(userService.getById(currentUserId));
-        if (request.userIds() != null) {
-            request.userIds().stream()
-                .filter(userId -> !currentUserId.equals(userId))
-                .map(userService::getById)
-                .forEach(groupChat::addMember);
-        }
-        if (groupChat.getUserIds().size() < 2) {
-            return ResponseEntity.badRequest().build();
-        }
-        GroupChat saved = groupChatRepository.save(groupChat);
+        GroupChat saved = groupcChatService.create(request, principal);
         return ResponseEntity.ok(new GroupChatSummaryDto(
             saved.getId(),
             saved.getName(),
@@ -105,11 +89,8 @@ public class GroupChatController {
     @ResponseBody
     @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        if (!groupChatRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
-        groupChatRepository.deleteById(id);
+    public ResponseEntity<Void> delete(@PathVariable Long id, Principal principal) {
+        groupcChatService.delete(id, principal);
         return ResponseEntity.noContent().build();
     }
 
