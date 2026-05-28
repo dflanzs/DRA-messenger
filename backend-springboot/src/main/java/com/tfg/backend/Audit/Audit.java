@@ -1,7 +1,10 @@
 package com.tfg.backend.Audit;
 
+import com.tfg.backend.Enums.AuditAction;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -10,19 +13,14 @@ import jakarta.persistence.Table;
 @Entity
 @Table(name = "audit")
 public class Audit {
-    
-    private enum Action {
-        CREATE_USER, UPDATE_USER, DELETE_USER, LOGIN, LOGOUT, 
-        CREATE_OTO_CHAT, UPDATE_OTO_CHAT, DELETE_OTO_CHAT,
-        CREATE_GROUP_CHAT, UPDATE_GROUP_CHAT, DELETE_GROUP_CHAT,
-    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "action")
-    private Action action;
+    private AuditAction action;
 
     @Column(name = "userId")
     private Long userId;
@@ -32,7 +30,7 @@ public class Audit {
 
     public Audit() {}
 
-    public Audit(Action action, Long userId, Long timestamp) {
+    public Audit(AuditAction action, Long userId, Long timestamp) {
         this.action = action;
         this.userId = userId;
         this.timestamp = timestamp;
@@ -42,11 +40,11 @@ public class Audit {
         return id;
     }
 
-    public Action getAction() {
+    public AuditAction getAction() {
         return action;
     }
 
-    public void setAction(Action action) {
+    public void setAction(AuditAction action) {
         this.action = action;
     }
 
@@ -65,4 +63,4 @@ public class Audit {
     public void setTimestamp(Long timestamp) {
         this.timestamp = timestamp;
     }
-}   
+}
