@@ -7,7 +7,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.example.mobile_app.data.network.ChatApiService
 import com.example.mobile_app.data.network.RetrofitProvider
+import com.example.mobile_app.data.repository.RetrofitSignalRepository
 import com.example.mobile_app.data.repository.chat.ChatRepository
+import com.example.mobile_app.domain.signal.SignalCipherService
+import com.example.mobile_app.domain.signal.SignalEngine
+import com.example.mobile_app.domain.signal.toWireB64
 import com.example.mobile_app.network.NetworkConfig
 import com.example.mobile_app.security.CurrentUserManager
 import com.example.mobile_app.security.TokenManager
@@ -25,6 +29,7 @@ import kotlinx.coroutines.launch
 class ChatCoordinator(
     val repository: ChatRepository,
     private val currentUserManager: CurrentUserManager,
+    private val signalCipher: SignalCipherService,
 ) {
     val state: Flow<com.example.mobile_app.data.model.chat.ChatState> = repository.observeState()
     var webSocketUseCases: WebSocketUseCases? = null
@@ -59,9 +64,10 @@ class ChatCoordinator(
         conversationType: String,
         conversationId: Long,
         senderUserId: Long,
+        cypherTextType: Short,
         cypherTextB64: String,
         createdAt: String,
-    ) = repository.saveIncomingWebSocketMessage(conversationType, conversationId, senderUserId, cypherTextB64, createdAt)
+    ) = repository.saveIncomingWebSocketMessage(conversationType, conversationId, senderUserId, cypherTextType, cypherTextB64, createdAt)
 
     /**
      * Maneja un mensaje WebSocket entrante desde el callback de suscripción STOMP.
@@ -73,6 +79,7 @@ class ChatCoordinator(
         conversationType: String,
         conversationId: Long,
         senderUserId: Long,
+        cypherTextType: Short,
         cypherTextB64: String,
         createdAt: String,
     ) {
@@ -83,7 +90,7 @@ class ChatCoordinator(
         coordinatorScope.launch {
             val saved = runCatching {
                 repository.saveIncomingWebSocketMessage(
-                    conversationType, conversationId, senderUserId, cypherTextB64, createdAt,
+                    conversationType, conversationId, senderUserId, cypherTextType, cypherTextB64, createdAt,
                 )
             }.onFailure { Log.w("ChatCoordinator", "No se pudo guardar mensaje entrante: ${it.message}") }
                 .isSuccess
@@ -108,6 +115,7 @@ class ChatCoordinator(
                     conversationType = msg.conversationType,
                     conversationId = msg.conversationId,
                     senderUserId = msg.senderUserId,
+                    cypherTextType = msg.cypherTextType,
                     cypherTextB64 = msg.cypherTextB64,
                     createdAt = msg.createdAt?.toString() ?: java.time.LocalDateTime.now().toString(),
                 )

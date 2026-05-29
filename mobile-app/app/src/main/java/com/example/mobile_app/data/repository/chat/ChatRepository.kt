@@ -17,8 +17,11 @@ import com.example.mobile_app.data.model.chat.GroupChatSummaryDto
 import com.example.mobile_app.data.model.chat.LocalChatMessageRecord
 import com.example.mobile_app.data.model.chat.LocalChatRecord
 import com.example.mobile_app.data.network.ChatApiService
+import com.example.mobile_app.domain.signal.SignalCipherService
+import com.example.mobile_app.domain.signal.payloadFromWire
 import com.example.mobile_app.security.CurrentUserInfo
 import com.example.mobile_app.security.CurrentUserManager
+import org.signal.libsignal.protocol.DuplicateMessageException
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import java.time.LocalDateTime
@@ -36,6 +39,7 @@ class ChatRepository(
     private val chatApiService: ChatApiService,
     private val currentUserManager: CurrentUserManager,
     private val moshi: Moshi,
+    private val signalCipher: SignalCipherService,
 ) {
     private val TAG = "ChatRepository"
     private val stateAdapter = moshi.newBuilder()
@@ -193,13 +197,24 @@ class ChatRepository(
         conversationType: String,
         conversationId: Long,
         senderUserId: Long,
+        cypherTextType: Short,
         cypherTextB64: String,
         createdAt: String,
     ) {
         val currentUser = currentUserManager.getCurrentUser() ?: return
         val users = getUsersSnapshot()
         val senderName = users.firstOrNull { it.id == senderUserId }?.name ?: senderUserId.toString()
-        val text = decodePayload(cypherTextB64)
+        // DIRECT: descifrado E2E real con libsignal. GROUP: placeholder base64 hasta el plan de grupos.
+        val text = if (conversationType == "DIRECT") {
+            try {
+                String(signalCipher.decryptDirect(senderUserId, payloadFromWire(cypherTextType, cypherTextB64)))
+            } catch (e: DuplicateMessageException) {
+                Log.d(TAG, "Mensaje duplicado de $senderUserId ya procesado; se omite")
+                return
+            }
+        } else {
+            decodePayload(cypherTextB64)
+        }
         val computedKey = chatKey(conversationType, conversationId)
         Log.d(TAG, "saveIncomingWS: type=$conversationType id=$conversationId -> key=$computedKey ; " +
             "chats existentes=${getState().chats.map { it.chatKey }}")
