@@ -17,6 +17,7 @@ import com.example.mobile_app.data.model.chat.GroupChatSummaryDto
 import com.example.mobile_app.data.model.chat.LocalChatMessageRecord
 import com.example.mobile_app.data.model.chat.LocalChatRecord
 import com.example.mobile_app.data.network.ChatApiService
+import com.example.mobile_app.domain.signal.DirectFrame
 import com.example.mobile_app.domain.signal.SignalCipherService
 import com.example.mobile_app.domain.signal.payloadFromWire
 import com.example.mobile_app.security.CurrentUserInfo
@@ -204,16 +205,33 @@ class ChatRepository(
         val currentUser = currentUserManager.getCurrentUser() ?: return
         val users = getUsersSnapshot()
         val senderName = users.firstOrNull { it.id == senderUserId }?.name ?: senderUserId.toString()
-        // DIRECT: descifrado E2E real con libsignal. GROUP: placeholder base64 hasta el plan de grupos.
-        val text = if (conversationType == "DIRECT") {
-            try {
-                String(signalCipher.decryptDirect(senderUserId, payloadFromWire(cypherTextType, cypherTextB64)))
-            } catch (e: DuplicateMessageException) {
-                Log.d(TAG, "Mensaje duplicado de $senderUserId ya procesado; se omite")
-                return
+        // Descifrado E2E real con libsignal: DIRECT (sesión 1:1) y GROUP (sender keys).
+        val text: String = when (conversationType) {
+            "DIRECT" -> {
+                val plain = try {
+                    signalCipher.decryptDirect(senderUserId, payloadFromWire(cypherTextType, cypherTextB64))
+                } catch (e: DuplicateMessageException) {
+                    Log.d(TAG, "Mensaje duplicado de $senderUserId ya procesado; se omite")
+                    return
+                }
+                when (val frame = DirectFrame.decode(plain)) {
+                    is DirectFrame.Text -> String(frame.body)
+                    is DirectFrame.Skdm -> {
+                        // No es un mensaje visible: registra la sender key del emisor para su grupo.
+                        signalCipher.processSenderKeyDistribution(senderUserId, frame.groupId, frame.skdmBytes)
+                        return
+                    }
+                }
             }
-        } else {
-            decodePayload(cypherTextB64)
+            "GROUP" -> {
+                val plain = signalCipher.decryptGroup(
+                    conversationId, senderUserId, payloadFromWire(cypherTextType, cypherTextB64),
+                )
+                // Sin sender key del emisor todavía: no se hace ACK -> el backend reintenta la entrega.
+                if (plain.isEmpty()) error("Sender key de $senderUserId no disponible aún; se reintentará")
+                String(plain)
+            }
+            else -> decodePayload(cypherTextB64)
         }
         val computedKey = chatKey(conversationType, conversationId)
         Log.d(TAG, "saveIncomingWS: type=$conversationType id=$conversationId -> key=$computedKey ; " +

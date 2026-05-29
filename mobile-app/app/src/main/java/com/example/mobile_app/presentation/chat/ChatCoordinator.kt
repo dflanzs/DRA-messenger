@@ -9,6 +9,7 @@ import com.example.mobile_app.data.network.ChatApiService
 import com.example.mobile_app.data.network.RetrofitProvider
 import com.example.mobile_app.data.repository.RetrofitSignalRepository
 import com.example.mobile_app.data.repository.chat.ChatRepository
+import com.example.mobile_app.domain.signal.DirectFrame
 import com.example.mobile_app.domain.signal.SignalCipherService
 import com.example.mobile_app.domain.signal.SignalEngine
 import com.example.mobile_app.domain.signal.toWireB64
@@ -143,14 +144,13 @@ class ChatCoordinator(
         val chat = repository.getChat(chatKey) ?: return false
         val currentUser = currentUserManager.getCurrentUser() ?: return false
         val useCases = webSocketUseCases ?: return false
-        val payload = Base64.encodeToString(text.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
 
         return when (chat.type) {
             "DIRECT" -> {
                 val recipientUserId = chat.memberIds.firstOrNull { it != currentUser.id } ?: return false
-                // Cifrado E2E real con libsignal (1:1).
-                val (cypherTextType, cypherTextB64) =
-                    signalCipher.encryptDirect(recipientUserId, text.toByteArray(Charsets.UTF_8)).toWireB64()
+                // Cifrado E2E real con libsignal (1:1). El texto va envuelto en un DirectFrame.Text.
+                val framed = DirectFrame.text(text.toByteArray(Charsets.UTF_8)).encode()
+                val (cypherTextType, cypherTextB64) = signalCipher.encryptDirect(recipientUserId, framed).toWireB64()
                 val messageJson = """
                     {
                       "recipientUserId": $recipientUserId,
@@ -166,12 +166,29 @@ class ChatCoordinator(
                 sent
             }
             "GROUP" -> {
+                val groupId = chat.chatId ?: return false
+                val members = chat.memberIds.filter { it != currentUser.id }
+                // 1) Asegura que cada miembro tenga nuestra sender key (SKDM por el canal 1:1).
+                signalCipher.ensureSenderKeyDistributed(groupId, members).forEach { out ->
+                    val (t, b64) = out.payload.toWireB64()
+                    val skdmJson = """
+                        {
+                          "recipientUserId": ${out.recipientUserId},
+                          "conversationId": 0,
+                          "cypherTextType": $t,
+                          "cypherTextB64": "$b64"
+                        }
+                    """.trimIndent()
+                    useCases.sendPrivateMessage(skdmJson)
+                }
+                // 2) Cifra UNA vez con la sender key; el backend hace fanout del mismo blob.
+                val out = signalCipher.encryptGroup(groupId, text.toByteArray(Charsets.UTF_8))
                 val messageJson = """
                     {
                       "recipientUserId": ${currentUser.id},
-                      "groupChatId": ${chat.chatId},
-                      "cypherTextType": 1,
-                      "cypherTextB64": "$payload"
+                      "groupChatId": $groupId,
+                      "cypherTextType": ${out.cypherTextType},
+                      "cypherTextB64": "${out.cypherTextB64}"
                     }
                 """.trimIndent()
                 val sent = useCases.sendGroupMessage(messageJson)
