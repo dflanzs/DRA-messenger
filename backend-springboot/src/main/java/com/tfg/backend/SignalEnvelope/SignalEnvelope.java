@@ -107,14 +107,6 @@ public class SignalEnvelope {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    @Column(name = "delivered_at")
-    private LocalDateTime deliveredAt;
-
-    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    @Column(name = "read_at")
-    private LocalDateTime readAt;
-
     public SignalEnvelope() {
         // Default constructor for JPA
     }
@@ -215,22 +207,6 @@ public class SignalEnvelope {
 
     public LocalDateTime getCreatedAt() {
         return this.createdAt;
-    }
-
-    public LocalDateTime getDeliveredAt() {
-        return this.deliveredAt;
-    }
-
-    public void SetDeliveredAt(LocalDateTime deliveredAt) {
-        this.deliveredAt = deliveredAt;
-    }
-
-    public LocalDateTime getReadAt() {
-        return this.readAt;
-    }
-
-    public void MarkAsRead() {
-        this.readAt = LocalDateTime.now();
     }
 
     public MessageStatus getStatus(){
