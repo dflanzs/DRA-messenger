@@ -33,7 +33,7 @@ fun interface BundleFetcher { suspend fun fetch(remoteUserId: Long): SignalBundl
 
 class SignalCipherService(
     private val store: PersistentSignalProtocolStore,
-    private val ownUserId: Long,
+    private val ownUserId: () -> Long,
     private val bundleFetcher: BundleFetcher,
 ) {
     private val mutexes = HashMap<String, Mutex>()

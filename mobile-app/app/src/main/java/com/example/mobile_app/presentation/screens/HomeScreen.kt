@@ -73,13 +73,10 @@ fun HomeScreen(
             bootstrapError = null
             scope.launch {
                 runCatching {
-                    // Check if bootstrap was already completed
-                    if (signalCoordinator.signalStore.isBootstrapCompleted()) {
-                        bootstrapSuccess = true
-                    } else {
-                        signalCoordinator.bootstrapSignalKeysUseCase()
-                        bootstrapSuccess = true
-                    }
+                    // ensureBootstrapped es idempotente: genera el material local si falta y
+                    // publica las claves públicas al backend.
+                    signalCoordinator.bootstrap()
+                    bootstrapSuccess = true
                 }.onSuccess {
                     isBootstrappingKeys = false
                     Log.d(TAG, "Bootstrap de Signal completado")
@@ -126,6 +123,7 @@ fun HomeScreen(
                             conversationType = message.conversationType,
                             conversationId = message.conversationId,
                             senderUserId = message.senderUserId,
+                            cypherTextType = message.cypherTextType,
                             cypherTextB64 = message.cypherTextB64,
                             createdAt = message.createdAt?.toString() ?: java.time.LocalDateTime.now().toString(),
                         )

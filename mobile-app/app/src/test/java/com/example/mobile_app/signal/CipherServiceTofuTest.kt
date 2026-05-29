@@ -45,7 +45,7 @@ class CipherServiceTofuTest {
         val bob2 = peer() // "otro Bob" con identidad distinta
 
         var current = bob1
-        val alice = SignalCipherService(aliceStore, ownUserId = 1) { bundleOf(current) }
+        val alice = SignalCipherService(aliceStore, ownUserId = { 1 }) { bundleOf(current) }
 
         runBlocking { alice.encryptDirect(2, "hola".toByteArray()) } // primera sesión OK con bob1
 

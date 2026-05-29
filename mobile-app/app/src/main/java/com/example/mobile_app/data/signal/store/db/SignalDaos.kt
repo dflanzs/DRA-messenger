@@ -35,6 +35,7 @@ interface OneTimePreKeyDao {
     @Query("DELETE FROM one_time_prekeys WHERE preKeyId = :id") fun delete(id: Int)
     @Query("SELECT COUNT(*) FROM one_time_prekeys WHERE preKeyId = :id AND consumed = 0") fun countUnconsumed(id: Int): Int
     @Query("SELECT COUNT(*) FROM one_time_prekeys WHERE consumed = 0") fun remaining(): Int
+    @Query("SELECT * FROM one_time_prekeys WHERE consumed = 0") fun allUnconsumed(): List<OneTimePreKeyEntity>
 }
 
 @Dao

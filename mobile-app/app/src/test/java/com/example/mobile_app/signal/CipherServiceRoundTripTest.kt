@@ -52,8 +52,8 @@ class CipherServiceRoundTripTest {
         val aliceStore = newPeer()
         val bobStore = newPeer()
 
-        val alice = SignalCipherService(aliceStore, ownUserId = 1) { bundleOf(bobStore) }
-        val bob = SignalCipherService(bobStore, ownUserId = 2) { bundleOf(aliceStore) }
+        val alice = SignalCipherService(aliceStore, ownUserId = { 1 }) { bundleOf(bobStore) }
+        val bob = SignalCipherService(bobStore, ownUserId = { 2 }) { bundleOf(aliceStore) }
 
         // Alice abre sesión: primer mensaje es PreKeySignalMessage (type=3).
         val m1 = alice.encryptDirect(remoteUserId = 2, plaintext = "uno".toByteArray())

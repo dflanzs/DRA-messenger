@@ -30,7 +30,7 @@ private object Routes {
 @Composable
 fun AppNavigation(navController: NavHostController = rememberNavController()) {
     val authCoordinator = rememberAuthCoordinator()
-    val signalCoordinator = rememberSignalCoordinator()
+    val signalCoordinator = rememberSignalCoordinator(authCoordinator.currentUserManager)
     val chatCoordinator = rememberChatCoordinator(authCoordinator.tokenManager, authCoordinator.currentUserManager)
     val scope = rememberCoroutineScope()
 
