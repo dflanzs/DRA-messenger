@@ -30,8 +30,10 @@ import kotlinx.coroutines.launch
 class ChatCoordinator(
     val repository: ChatRepository,
     private val currentUserManager: CurrentUserManager,
-    private val signalCipher: SignalCipherService,
+    private val signalEngine: SignalEngine,
 ) {
+    private val signalCipher: SignalCipherService get() = signalEngine.cipher
+
     val state: Flow<com.example.mobile_app.data.model.chat.ChatState> = repository.observeState()
     var webSocketUseCases: WebSocketUseCases? = null
         private set
@@ -97,6 +99,8 @@ class ChatCoordinator(
                 .isSuccess
             if (saved) {
                 repository.ackMessageDelivered(envelopeId)
+                // Un mensaje PreKey entrante puede haber consumido una one-time prekey local.
+                runCatching { signalEngine.refillIfNeeded() }
             }
         }
     }
@@ -124,6 +128,8 @@ class ChatCoordinator(
                 .isSuccess
             if (saved) repository.ackMessageDelivered(msg.envelopeId)
         }
+        // Tras drenar pendientes (posibles sesiones nuevas), repón one-time prekeys si quedan pocas.
+        runCatching { signalEngine.refillIfNeeded() }
     }
 
     suspend fun saveOutgoingMessage(
@@ -231,6 +237,6 @@ fun rememberChatCoordinator(
             signalCipher = signalEngine.cipher,
         )
         Log.d("ChatCoordinator", "ChatRepository inicializado")
-        ChatCoordinator(repository, currentUserManager, signalEngine.cipher)
+        ChatCoordinator(repository, currentUserManager, signalEngine)
     }
 }

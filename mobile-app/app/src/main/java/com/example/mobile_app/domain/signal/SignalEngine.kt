@@ -6,6 +6,7 @@ import android.util.Log
 import com.example.mobile_app.data.model.signal.SignalBootstrapRequestDto
 import com.example.mobile_app.data.model.signal.SignalBootstrapResponseDto
 import com.example.mobile_app.data.model.signal.SignalOneTimePreKeyDto
+import com.example.mobile_app.data.model.signal.SignalRefillRequestDto
 import com.example.mobile_app.data.repository.SignalRepository
 import com.example.mobile_app.data.signal.store.PersistentSignalProtocolStore
 import com.example.mobile_app.data.signal.store.SignalStoreBootstrap
@@ -16,6 +17,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import org.signal.libsignal.protocol.ecc.ECKeyPair
+import org.signal.libsignal.protocol.state.PreKeyRecord
 
 /**
  * Punto único del subsistema Signal en producción. Mantiene el store persistente (Room + Keystore),
@@ -53,6 +56,30 @@ class SignalEngine private constructor(
         }
     }
 
+    private val refillMutex = Mutex()
+
+    /**
+     * Repone one-time prekeys cuando quedan pocas sin consumir (se consumen al recibir mensajes
+     * PreKey de nuevas sesiones). Genera un lote con IDs únicos crecientes, lo persiste y publica.
+     */
+    suspend fun refillIfNeeded() = withContext(Dispatchers.IO) {
+        refillMutex.withLock {
+            if (db.oneTimePreKeyDao().remaining() >= LOW_THRESHOLD) return@withLock
+            val meta = db.bootstrapMetaDao().get() ?: return@withLock
+            val lastId = meta.lastOneTimePreKeyId
+            val records = (1..REFILL_COUNT).map { i -> PreKeyRecord(lastId + i, ECKeyPair.generate()) }
+            records.forEach { store.storePreKey(it.id, it) }
+            db.bootstrapMetaDao().upsert(meta.copy(lastOneTimePreKeyId = lastId + REFILL_COUNT))
+
+            fun ByteArray.b64() = Base64.encodeToString(this, Base64.NO_WRAP)
+            val request = SignalRefillRequestDto(
+                records.map { SignalOneTimePreKeyDto(it.id, it.keyPair.publicKey.serialize().b64()) },
+            )
+            runCatching { signalRepository.refillKeys(request) }
+                .onFailure { Log.w(TAG, "refill publish falló: ${it.message}") }
+        }
+    }
+
     private fun buildBootstrapRequest(): SignalBootstrapRequestDto {
         fun ByteArray.b64() = Base64.encodeToString(this, Base64.NO_WRAP)
         val signed = store.loadSignedPreKey(SIGNED_PRE_KEY_ID)
@@ -77,6 +104,8 @@ class SignalEngine private constructor(
         private const val TAG = "SignalEngine"
         private const val SIGNED_PRE_KEY_ID = 1
         private const val KYBER_PRE_KEY_ID = 1
+        private const val LOW_THRESHOLD = 5
+        private const val REFILL_COUNT = 20
 
         @Volatile private var INSTANCE: SignalEngine? = null
 
