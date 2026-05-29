@@ -148,12 +148,15 @@ class ChatCoordinator(
         return when (chat.type) {
             "DIRECT" -> {
                 val recipientUserId = chat.memberIds.firstOrNull { it != currentUser.id } ?: return false
+                // Cifrado E2E real con libsignal (1:1).
+                val (cypherTextType, cypherTextB64) =
+                    signalCipher.encryptDirect(recipientUserId, text.toByteArray(Charsets.UTF_8)).toWireB64()
                 val messageJson = """
                     {
                       "recipientUserId": $recipientUserId,
                       "conversationId": ${chat.chatId},
-                      "cypherTextType": 1,
-                      "cypherTextB64": "$payload"
+                      "cypherTextType": $cypherTextType,
+                      "cypherTextB64": "$cypherTextB64"
                     }
                 """.trimIndent()
                 val sent = useCases.sendPrivateMessage(messageJson)
@@ -201,13 +204,16 @@ fun rememberChatCoordinator(
             .addConverterFactory(MoshiConverterFactory.create(moshi.newBuilder().add(KotlinJsonAdapterFactory()).build()))
             .build()
             .create(ChatApiService::class.java)
+        val signalRepository = RetrofitSignalRepository(RetrofitProvider.createSignalApiService(context))
+        val signalEngine = SignalEngine.get(context, currentUserManager, signalRepository)
         val repository = ChatRepository(
             context = context,
             chatApiService = apiService,
             currentUserManager = currentUserManager,
             moshi = moshi,
+            signalCipher = signalEngine.cipher,
         )
         Log.d("ChatCoordinator", "ChatRepository inicializado")
-        ChatCoordinator(repository, currentUserManager)
+        ChatCoordinator(repository, currentUserManager, signalEngine.cipher)
     }
 }
