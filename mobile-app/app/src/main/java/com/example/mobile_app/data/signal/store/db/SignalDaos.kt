@@ -56,6 +56,14 @@ interface SenderKeyDao {
 }
 
 @Dao
+interface SenderKeyDistributionDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE) fun upsert(e: SenderKeyDistributionEntity)
+    @Query("SELECT * FROM sender_key_distribution WHERE distributionId = :d AND memberUserId = :m")
+    fun get(d: String, m: Long): SenderKeyDistributionEntity?
+    @Query("DELETE FROM sender_key_distribution WHERE distributionId = :d") fun clearForDistribution(d: String)
+}
+
+@Dao
 interface RemoteIdentityDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) fun upsert(e: RemoteIdentityEntity)
     @Query("SELECT * FROM remote_identities WHERE address = :address") fun get(address: String): RemoteIdentityEntity?

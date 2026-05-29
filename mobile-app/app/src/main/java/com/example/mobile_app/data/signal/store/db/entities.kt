@@ -43,6 +43,15 @@ data class SenderKeyEntity(
     val recordEnc: ByteArray,              // cifrado: SenderKeyRecord.serialize()
 )
 
+/** Rastrea a qué miembros se les ha enviado ya nuestra SKDM para una distributionId concreta. */
+@Entity(tableName = "sender_key_distribution")
+data class SenderKeyDistributionEntity(
+    @PrimaryKey val key: String,           // "distributionId|memberUserId"
+    val distributionId: String,
+    val memberUserId: Long,
+    val sent: Boolean,
+)
+
 @Entity(tableName = "remote_identities")
 data class RemoteIdentityEntity(
     @PrimaryKey val address: String,       // "name:deviceId"
