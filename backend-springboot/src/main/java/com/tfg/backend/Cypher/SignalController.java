@@ -48,7 +48,7 @@ public class SignalController {
 
     @PostMapping("/keys/one-time/refill")
     public SignalRefillResponseDto postOneTimePreKeysRefill(
-            SignalRefillRequestDto request,
+            @Valid @RequestBody SignalRefillRequestDto request,
             Principal principal
     ) {
         User user = userService.getByEmail(principal.getName());
