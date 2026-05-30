@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageRequestDto;
 import com.tfg.backend.SignalEnvelope.dto.SignalMessageWSDto;
 import com.tfg.backend.SignalEnvelope.dto.SignalGroupMessageRequestDto;
+import com.tfg.backend.SignalEnvelope.dto.SignalGroupSenderKeyRequestDto;
 import com.tfg.backend.TrustCircles.TrustCirclesService;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserService;
@@ -44,6 +45,16 @@ public class SignalEnvelopeController {
         User sender = userService.getByEmail(principal.getName());
 
         messageService.sendGroupMessage(sender.getId(), messageDTO);
+    }
+
+    @MessageMapping("/group-sender-key")
+    public void sendGroupSenderKey(
+            @Valid @Payload SignalGroupSenderKeyRequestDto request,
+            Principal principal
+    ) {
+        User sender = userService.getByEmail(principal.getName());
+
+        messageService.sendGroupSenderKey(sender.getId(), request);
     }
 
 	@MessageMapping("/private-message")

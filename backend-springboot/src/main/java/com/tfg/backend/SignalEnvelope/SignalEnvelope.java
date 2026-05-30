@@ -33,7 +33,7 @@ import jakarta.validation.constraints.AssertTrue;
         @Index(name = "idx_signal_envelopes_pending", columnList = "recipient_user_id, id")
     }
 )
-@Check(constraints = "((conversation_type = 'DIRECT' AND one_to_one_chat_id IS NOT NULL AND group_chat_id IS NULL) OR (conversation_type = 'GROUP' AND group_chat_id IS NOT NULL AND one_to_one_chat_id IS NULL))")
+@Check(constraints = "((conversation_type = 'DIRECT' AND one_to_one_chat_id IS NOT NULL AND group_chat_id IS NULL) OR (conversation_type IN ('GROUP', 'SENDER_KEY') AND group_chat_id IS NOT NULL AND one_to_one_chat_id IS NULL))")
 public class SignalEnvelope {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -48,8 +48,11 @@ public class SignalEnvelope {
     private User receiver;
 
     public enum ConversationType {
-        DIRECT("DIRECT"), // Equivalent in Signal to One-to-One chats 
-        GROUP("GROUP");
+        DIRECT("DIRECT"), // Equivalent in Signal to One-to-One chats
+        GROUP("GROUP"),
+        // SenderKeyDistributionMessage: cifrado 1:1 pero atado al grupo. Se transporta
+        // por su propio tipo para no exigir un OneToOneChat entre miembros del grupo.
+        SENDER_KEY("SENDER_KEY");
 
         private final String value;
 
@@ -141,6 +144,21 @@ public class SignalEnvelope {
         this.createdAt = LocalDateTime.now();
         this.conversationType = ConversationType.DIRECT;
         this.status = MessageStatus.PENDING;
+    }
+
+    // SenderKey: mismo cifrado 1:1 que un DIRECT pero atado al grupo (sin OneToOneChat).
+    // Factory porque la firma coincide con el constructor de GROUP.
+    public static SignalEnvelope senderKey(User sender, User receiver, GroupChat groupChat, byte[] cypherText, Short cypherTextType) {
+        SignalEnvelope envelope = new SignalEnvelope();
+        envelope.sender = sender;
+        envelope.receiver = receiver;
+        envelope.groupChat = groupChat;
+        envelope.cypherText = cypherText;
+        envelope.cypherTextType = cypherTextType;
+        envelope.createdAt = LocalDateTime.now();
+        envelope.conversationType = ConversationType.SENDER_KEY;
+        envelope.status = MessageStatus.PENDING;
+        return envelope;
     }
 
     @AssertTrue(message = "Inconsistent conversation type and chat relation")
