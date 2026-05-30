@@ -22,6 +22,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.AssertTrue;
 
@@ -105,10 +106,18 @@ public class SignalEnvelope {
 
     @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     public SignalEnvelope() {
         // Default constructor for JPA
+    }
+
+    // Garantiza createdAt no nulo aunque se construya via el constructor por defecto de JPA.
+    @PrePersist
+    public void prePersist() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
     }
     
     // OneToOneChats and GroupChats are different classes so we dont have to check the type, only assign it for libsignal

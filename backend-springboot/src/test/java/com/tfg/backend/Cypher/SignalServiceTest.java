@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -51,7 +53,7 @@ class SignalServiceTest {
 
         SignalOneTimePreKey oneTimePreKey =
                 new SignalOneTimePreKey(ONE_TIME_PRE_KEY_ID, new byte[]{6}, new User());
-        when(signalOneTimePreKeyRepository.getUnconsumedPreKeyByUserId(USER_ID)).thenReturn(oneTimePreKey);
+        when(signalOneTimePreKeyRepository.getUnconsumedPreKeyByUserId(eq(USER_ID), any())).thenReturn(oneTimePreKey);
 
         SignalBundleResponseDto bundle = signalService.getUserBundle(USER_ID);
 
@@ -62,7 +64,7 @@ class SignalServiceTest {
     @Test
     void getUserBundle_returnsDegradedBundle_whenNoOneTimePreKeyLeft() {
         when(signalAccountRepository.getByUserId(USER_ID)).thenReturn(accountWithActiveKeys());
-        when(signalOneTimePreKeyRepository.getUnconsumedPreKeyByUserId(USER_ID)).thenReturn(null);
+        when(signalOneTimePreKeyRepository.getUnconsumedPreKeyByUserId(eq(USER_ID), any())).thenReturn(null);
 
         SignalBundleResponseDto bundle = signalService.getUserBundle(USER_ID);
 
