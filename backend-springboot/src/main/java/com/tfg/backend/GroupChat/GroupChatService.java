@@ -3,6 +3,7 @@ package com.tfg.backend.GroupChat;
 import com.tfg.backend.Audit.AuditService;
 import com.tfg.backend.Chat.dto.CreateGroupChatRequestDto;
 import com.tfg.backend.Enums.AuditAction;
+import com.tfg.backend.TrustCircles.TrustCirclesService;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserRepository;
 import com.tfg.backend.User.UserService;
@@ -10,6 +11,7 @@ import com.tfg.backend.User.UserService;
 import jakarta.transaction.Transactional;
 
 import java.security.Principal;
+import java.util.List;
 import java.util.Set;
 
 import org.springframework.http.HttpStatus;
@@ -24,17 +26,20 @@ public class GroupChatService {
     private final UserRepository userRepository;
     private final UserService userService;
     private final AuditService auditService;
+    private final TrustCirclesService trustCirclesService;
 
     public GroupChatService(
         GroupChatRepository groupChatRepository,
         UserRepository userRepository,
         UserService userService,
-        AuditService auditService
+        AuditService auditService,
+        TrustCirclesService trustCirclesService
     ) {
         this.groupChatRepository = groupChatRepository;
         this.userRepository = userRepository;
         this.userService = userService;
         this.auditService = auditService;
+        this.trustCirclesService = trustCirclesService;
     }
 
     @Transactional
@@ -55,6 +60,19 @@ public class GroupChatService {
         }
         if (groupChat.getUserIds().size() < 2) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El grupo necesita al menos 2 miembros");
+        }
+
+        // Todo par de miembros debe compartir círculo de confianza: el reparto de la
+        // sender key (SKDM) descarga el bundle de cada otro miembro, y ese endpoint exige
+        // confianza mutua. Validarlo aquí evita grupos que luego no podrían cifrar.
+        List<Long> memberIds = List.copyOf(groupChat.getUserIds());
+        for (int i = 0; i < memberIds.size(); i++) {
+            for (int j = i + 1; j < memberIds.size(); j++) {
+                if (!trustCirclesService.canUsersCommunicate(memberIds.get(i), memberIds.get(j))) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "Todos los miembros del grupo deben compartir un círculo de confianza");
+                }
+            }
         }
 
         GroupChat saved = groupChatRepository.save(groupChat);
@@ -97,6 +115,15 @@ public class GroupChatService {
 
         if (groupChat.getUserIds().contains(userId)) {
             return ResponseEntity.badRequest().body("User is already a member of the group chat.");
+        }
+
+        // El nuevo miembro debe compartir círculo con todos los actuales (mismo motivo
+        // que en create: el SKDM necesita confianza mutua par a par).
+        for (Long memberId : groupChat.getUserIds()) {
+            if (!trustCirclesService.canUsersCommunicate(memberId, userId)) {
+                return ResponseEntity.status(403)
+                    .body("User must share a trust circle with all group members.");
+            }
         }
 
         groupChat.addMember(newUser);
