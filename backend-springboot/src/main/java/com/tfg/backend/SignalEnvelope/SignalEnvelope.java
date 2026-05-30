@@ -29,7 +29,7 @@ import jakarta.validation.constraints.AssertTrue;
 @Table(
     name = "signal_envelopes",
     indexes = {
-        @Index(name = "idx_signal_envelopes_pending", columnList = "recipient_user_id, delivered_at, id")
+        @Index(name = "idx_signal_envelopes_pending", columnList = "recipient_user_id, id")
     }
 )
 @Check(constraints = "((conversation_type = 'DIRECT' AND one_to_one_chat_id IS NOT NULL AND group_chat_id IS NULL) OR (conversation_type = 'GROUP' AND group_chat_id IS NOT NULL AND one_to_one_chat_id IS NULL))")

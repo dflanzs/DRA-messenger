@@ -21,9 +21,6 @@ public class Notification {
     private String message;
 
     @Column(nullable = false)
-    private Long userId;
-
-    @Column(nullable = false)
     private boolean read = false;
 
     @Column(nullable = false)
@@ -35,11 +32,10 @@ public class Notification {
     public Notification() {
     }
 
-    public Notification(NotificationType type, String title, String message, Long userId) {
+    public Notification(NotificationType type, String title, String message) {
         this.type = type;
         this.title = title;
         this.message = message;
-        this.userId = userId;
         this.createdAt = LocalDateTime.now();
     }
 
@@ -73,14 +69,6 @@ public class Notification {
 
     public void setMessage(String message) {
         this.message = message;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
     }
 
     public boolean isRead() {
