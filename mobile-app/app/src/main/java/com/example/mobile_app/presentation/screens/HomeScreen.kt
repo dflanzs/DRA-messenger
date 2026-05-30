@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Card
@@ -59,6 +61,10 @@ fun HomeScreen(
     var webSocketError by remember { mutableStateOf<String?>(null) }
     var webSocketConnected by remember { mutableStateOf(false) }
     var showCreateChatDialog by remember { mutableStateOf(false) }
+    // Creación de grupo: pantalla de carga mientras se crea y se distribuyen las sender keys;
+    // se cierra sola si tiene éxito, o muestra error si algún miembro no comparte círculo.
+    var isCreatingGroup by remember { mutableStateOf(false) }
+    var groupCreationError by remember { mutableStateOf(false) }
     var chatsLoaded by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val TAG = "HomeScreen"
@@ -305,10 +311,60 @@ fun HomeScreen(
                     }
                 },
                 onCreateGroup = { name, userIds ->
+                    // Cierra el diálogo de selección y muestra la pantalla de carga.
+                    showCreateChatDialog = false
+                    isCreatingGroup = true
+                    groupCreationError = false
                     scope.launch {
                         runCatching { chatCoordinator.createGroupChat(name, userIds) }
-                            .onSuccess { chat -> if (chat != null) showCreateChatDialog = false }
-                            .onFailure { Log.e(TAG, "No se pudo crear el grupo: ${it.message}", it) }
+                            .onSuccess {
+                                isCreatingGroup = false
+                            }
+                            .onFailure {
+                                Log.e(TAG, "No se pudo crear el grupo: ${it.message}", it)
+                                isCreatingGroup = false
+                                groupCreationError = true
+                            }
+                    }
+                },
+            )
+        }
+
+        // Pantalla de carga durante la creación del grupo (no descartable).
+        if (isCreatingGroup) {
+            AlertDialog(
+                onDismissRequest = { },
+                title = { Text("Creando grupo") },
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = "Creando grupo y distribuyendo claves...",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                },
+                confirmButton = { },
+            )
+        }
+
+        // Error de creación: algún miembro no comparte círculo de confianza.
+        if (groupCreationError) {
+            AlertDialog(
+                onDismissRequest = { groupCreationError = false },
+                title = { Text("No se pudo crear el grupo") },
+                text = {
+                    Text(
+                        text = "Algunas personas no comparten círculo de confianza, " +
+                            "contacta con los administradores para crear uno con todos los " +
+                            "participantes si es necesario.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { groupCreationError = false }) {
+                        Text("Cerrar")
                     }
                 },
             )
