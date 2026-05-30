@@ -57,7 +57,7 @@ class SignalServiceTest {
 
         SignalBundleResponseDto bundle = signalService.getUserBundle(USER_ID);
 
-        assertEquals(ONE_TIME_PRE_KEY_ID, bundle.getPreKeyId());
+        assertEquals(ONE_TIME_PRE_KEY_ID, bundle.getOneTimePreKeyId());
         assertEquals(KYBER_PRE_KEY_ID, bundle.getKyberPreKeyId());
     }
 
@@ -68,8 +68,8 @@ class SignalServiceTest {
 
         SignalBundleResponseDto bundle = signalService.getUserBundle(USER_ID);
 
-        assertEquals(-1, bundle.getPreKeyId());
-        assertNull(bundle.getPreKeyPublicB64());
+        assertEquals(-1, bundle.getOneTimePreKeyId());
+        assertNull(bundle.getOneTimePreKeyPublicB64());
         assertEquals(KYBER_PRE_KEY_ID, bundle.getKyberPreKeyId());
     }
 }
