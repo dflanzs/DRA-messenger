@@ -180,12 +180,12 @@ class ChatCoordinator(
                     val skdmJson = """
                         {
                           "recipientUserId": ${out.recipientUserId},
-                          "conversationId": 0,
+                          "groupChatId": $groupId,
                           "cypherTextType": $t,
                           "cypherTextB64": "$b64"
                         }
                     """.trimIndent()
-                    useCases.sendPrivateMessage(skdmJson)
+                    useCases.sendGroupSenderKey(skdmJson)
                 }
                 // 2) Cifra UNA vez con la sender key; el backend hace fanout del mismo blob.
                 val out = signalCipher.encryptGroup(groupId, text.toByteArray(Charsets.UTF_8))

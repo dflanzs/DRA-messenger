@@ -132,6 +132,22 @@ class WebSocketRepository(
     }
 
     /**
+     * Enviar un SenderKeyDistributionMessage (SKDM) de grupo. Va cifrado 1:1 pero por
+     * su propio canal para no exigir un OneToOneChat entre miembros del grupo.
+     */
+    suspend fun sendGroupSenderKey(messageJson: String): Boolean {
+        return try {
+            stompClient?.send(
+                destination = "/app/group-sender-key",
+                body = messageJson
+            ) ?: false
+        } catch (e: Exception) {
+            Log.e(TAG, "Error enviando group-sender-key", e)
+            false
+        }
+    }
+
+    /**
      * Desconectar
      */
     fun disconnect() {
