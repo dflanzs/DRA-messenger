@@ -149,6 +149,10 @@ public class TrustCirclesService {
 		}
 	}
 
+    public int countTrustCircles() {
+        return trustCirclesRepository.countByDeletedAtIsNull();
+    }
+
 	private User ensureUserExists(Long userId) {
 		return userRepository.findByIdAndDeletedAtIsNull(userId)
 			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));

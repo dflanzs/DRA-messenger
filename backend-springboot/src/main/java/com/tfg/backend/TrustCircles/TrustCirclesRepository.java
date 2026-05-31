@@ -48,4 +48,6 @@ public interface TrustCirclesRepository extends JpaRepository<TrustCircles, Long
 		@Param("userId1") Long userId1,
 		@Param("userId2") Long userId2
 	);
+
+    int countByDeletedAtIsNull();
 }

@@ -78,6 +78,12 @@ public class TrustCirclesController {
         return ResponseEntity.ok(trustCirclesService.removeUserFromCircle(circleId, userId));
     }
 
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
+    @GetMapping("/count")
+    public ResponseEntity<Integer> count() {
+        return ResponseEntity.ok(trustCirclesService.countTrustCircles());
+    }
+
     private Long getAuthenticatedUserId(Principal principal) {
         if (principal == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado");
