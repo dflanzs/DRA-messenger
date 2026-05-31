@@ -157,6 +157,14 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    public int countUsers() {
+        return userRepository.countByDeletedAtIsNull();
+    }
+
+    public int countActiveUsers() {
+        return userRepository.countByOnlineStatusTrue();
+    }
+
     public boolean validatePassword(String password) {
         Pattern regex = Pattern.compile("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=])(?=\\S+$).{8,}$");
         Matcher matcher = regex.matcher(password);
