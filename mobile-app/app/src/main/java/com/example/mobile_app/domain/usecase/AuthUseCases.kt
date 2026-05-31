@@ -1,0 +1,58 @@
+@file:Suppress("unused")
+
+package com.example.mobile_app.domain.usecase
+
+import com.example.mobile_app.data.model.auth.AuthResponseDto
+import com.example.mobile_app.data.model.auth.MessageResponseDto
+import com.example.mobile_app.data.model.auth.VerifyEmailResponseDto
+import com.example.mobile_app.data.repository.AuthRepository
+import com.example.mobile_app.security.CurrentUserManager
+import com.example.mobile_app.security.TokenManager
+
+class RegisterUseCase(
+    private val repository: AuthRepository,
+) {
+    suspend operator fun invoke(name: String, email: String, password: String): MessageResponseDto {
+        return repository.register(name, email, password)
+    }
+}
+
+class VerifyEmailUseCase(
+    private val repository: AuthRepository,
+) {
+    suspend operator fun invoke(token: String): VerifyEmailResponseDto {
+        return repository.verifyEmail(token)
+    }
+}
+
+class LoginUseCase(
+    private val repository: AuthRepository,
+    private val tokenManager: TokenManager,
+    private val currentUserManager: CurrentUserManager,
+) {
+    suspend operator fun invoke(email: String, password: String): AuthResponseDto {
+        val response = repository.login(email, password)
+        tokenManager.saveToken(response.token)
+        currentUserManager.saveCurrentUser(
+            id = response.user.id,
+            name = response.user.name,
+            email = response.user.email,
+        )
+        return response
+    }
+}
+
+class LogoutUseCase(
+    private val repository: AuthRepository,
+    private val tokenManager: TokenManager,
+    private val currentUserManager: CurrentUserManager,
+) {
+    suspend operator fun invoke() {
+        runCatching {
+            repository.logout()
+        }
+        tokenManager.clearToken()
+        currentUserManager.clearCurrentUser()
+    }
+}
+

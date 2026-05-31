@@ -1,6 +1,8 @@
 import api from './client';
 import type {
   AdminStats,
+  AuditAction,
+  AuditLog,
   GroupChat,
   Message,
   PrivateChat,
@@ -9,23 +11,40 @@ import type {
   UserRole,
 } from '../types';
 
+export interface AuditFilters {
+  userId?: number;
+  action?: AuditAction;
+  from?: number;
+  to?: number;
+}
+
 export async function getStats(): Promise<AdminStats> {
-  const [users, messages, groupChats, privateChats, trustCircles] = await Promise.all([
-    getUsers(),
-    getMessages(),
-    getGroupChats(),
-    getPrivateChats(),
-    getTrustCircles(),
+  const [totalUsers, onlineUsers, totalTrustCircles] = await Promise.all([
+    getUserCount(),
+    getActiveUserCount(),
+    getTrustCircleCount(),
   ]);
 
   return {
-    totalUsers: users.length,
-    onlineUsers: users.filter((user) => user.onlineStatus).length,
-    totalMessages: messages.length,
-    totalGroupChats: groupChats.length,
-    totalPrivateChats: privateChats.length,
-    totalTrustCircles: trustCircles.length,
+    totalUsers,
+    onlineUsers,
+    totalTrustCircles,
   };
+}
+
+export async function getUserCount(): Promise<number> {
+  const { data } = await api.get<number>('/api/users/count');
+  return data;
+}
+
+export async function getActiveUserCount(): Promise<number> {
+  const { data } = await api.get<number>('/api/users/count-active');
+  return data;
+}
+
+export async function getTrustCircleCount(): Promise<number> {
+  const { data } = await api.get<number>('/api/trust-circles/count');
+  return data;
 }
 
 export async function getUsers(): Promise<User[]> {
@@ -40,6 +59,16 @@ export async function updateUserRole(userId: number, role: UserRole): Promise<Us
 
 export async function deleteUser(userId: number): Promise<void> {
   await api.delete(`/api/users/${userId}`);
+}
+
+export async function getAuditLogs(filters: AuditFilters = {}): Promise<AuditLog[]> {
+  const params: Record<string, string | number> = {};
+  if (filters.userId != null) params.userId = filters.userId;
+  if (filters.action) params.action = filters.action;
+  if (filters.from != null) params.from = filters.from;
+  if (filters.to != null) params.to = filters.to;
+  const { data } = await api.get<AuditLog[]>('/api/audit', { params });
+  return data;
 }
 
 export async function getGroupChats(): Promise<GroupChat[]> {
@@ -71,6 +100,29 @@ export async function deleteMessage(messageId: number): Promise<void> {
 
 export async function getTrustCircles(): Promise<TrustCircle[]> {
   const { data } = await api.get<TrustCircle[]>('/api/trust-circles');
+  return data;
+}
+
+export async function createTrustCircle(name: string, userIds: number[]): Promise<TrustCircle> {
+  const { data } = await api.post<TrustCircle>('/api/trust-circles', {
+    name,
+    userIds,
+  });
+  return data;
+}
+
+export async function addUserToCircle(circleId: number, userId: number): Promise<TrustCircle> {
+  const { data } = await api.post<TrustCircle>(
+    `/api/trust-circles/${circleId}/users/${userId}`,
+    {}
+  );
+  return data;
+}
+
+export async function removeUserFromCircle(circleId: number, userId: number): Promise<TrustCircle> {
+  const { data } = await api.delete<TrustCircle>(
+    `/api/trust-circles/${circleId}/users/${userId}`
+  );
   return data;
 }
 

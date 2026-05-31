@@ -12,8 +12,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tfg.backend.Chat.dto.ChatUserDto;
 import com.tfg.backend.User.dto.UpdateUserDto;
 import com.tfg.backend.User.dto.UpdateUserRoleDto;
+import com.tfg.backend.User.dto.UserResponseDto;
 
 @RestController
 @RequestMapping("/api/users")
@@ -26,21 +28,31 @@ public class UserController {
 
     @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @GetMapping
-    public List<User> list() {
-        return userService.list();
+    public List<UserResponseDto> list() {
+        return userService.list().stream()
+            .map(UserResponseDto::fromUser)
+            .toList();
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/active")
+    public List<ChatUserDto> listActive() {
+        return userService.list().stream()
+            .map(user -> new ChatUserDto(user.getId(), user.getName(), user.getEmail(), user.isOnlineStatus()))
+            .toList();
     }
 
     @PreAuthorize("@authorizationService.isSelfOrAdmin(authentication, #id)")
     @GetMapping("/{id}")
-    public ResponseEntity<User> get(@PathVariable Long id) {
-        return ResponseEntity.ok(userService.getById(id));
+    public ResponseEntity<UserResponseDto> get(@PathVariable Long id) {
+        return ResponseEntity.ok(UserResponseDto.fromUser(userService.getById(id)));
     }
 
     @PreAuthorize("@authorizationService.isSelfOrAdmin(authentication, #id)")
     @PutMapping("/{id}")
-    public ResponseEntity<User> update(@PathVariable Long id,
-                                       @Valid @RequestBody UpdateUserDto updateUserDto) {
-        return ResponseEntity.ok(userService.update(id, updateUserDto));
+    public ResponseEntity<UserResponseDto> update(@PathVariable Long id,
+                                                  @Valid @RequestBody UpdateUserDto updateUserDto) {
+        return ResponseEntity.ok(UserResponseDto.fromUser(userService.update(id, updateUserDto)));
     }
 
     @PreAuthorize("@authorizationService.isSelfOrAdmin(authentication, #id)")
@@ -52,15 +64,27 @@ public class UserController {
 
     @PreAuthorize("@authorizationService.isSelf(authentication, #id)")
     @PutMapping("/{id}/online-status")
-    public ResponseEntity<User> setOnlineStatus(@PathVariable Long id,
-                                                @RequestBody boolean onlineStatus) {
-        return ResponseEntity.ok(userService.setOnlineStatus(id, onlineStatus));
+    public ResponseEntity<UserResponseDto> setOnlineStatus(@PathVariable Long id,
+                                                           @RequestBody boolean onlineStatus) {
+        return ResponseEntity.ok(UserResponseDto.fromUser(userService.setOnlineStatus(id, onlineStatus)));
     }
 
     @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @PutMapping("/{id}/role")
-    public ResponseEntity<User> updateRole(@PathVariable Long id,
-                                           @RequestBody UpdateUserRoleDto updateUserRoleDto) {
-        return ResponseEntity.ok(userService.updateRole(id, updateUserRoleDto.getRole()));
+    public ResponseEntity<UserResponseDto> updateRole(@PathVariable Long id,
+                                                      @RequestBody UpdateUserRoleDto updateUserRoleDto) {
+        return ResponseEntity.ok(UserResponseDto.fromUser(userService.updateRole(id, updateUserRoleDto.getRole())));
+    }
+
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
+    @GetMapping("/count")
+    public ResponseEntity<Integer> count() {
+        return ResponseEntity.ok(userService.countUsers());
+    }
+
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
+    @GetMapping("/count-active")
+    public ResponseEntity<Integer> countActiveUsers() {
+        return ResponseEntity.ok(userService.countActiveUsers());
     }
 }

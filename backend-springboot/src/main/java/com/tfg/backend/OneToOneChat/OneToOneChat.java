@@ -29,12 +29,6 @@ public class OneToOneChat {
     @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
 
-    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime updatedAt;
-
-    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime deletedAt;
-
     public OneToOneChat() {
     }
 
@@ -48,6 +42,22 @@ public class OneToOneChat {
         return id;
     }
 
+    public User getUser1() {
+        return user1;
+    }
+
+    public void setUser1(User user1) {
+        this.user1 = user1;
+    }
+
+    public User getUser2() {
+        return user2;
+    }
+
+    public void setUser2(User user2) {
+        this.user2 = user2;
+    }
+
     public Long getSenderId() {
         return user1.getId();
     }
@@ -58,5 +68,9 @@ public class OneToOneChat {
 
     public Long[] getUserIds() {
         return new Long[]{user1.getId(), user2.getId()};
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
     }
 }

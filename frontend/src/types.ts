@@ -58,11 +58,29 @@ export interface TrustCircle {
   deletedAt: string | null;
 }
 
+export type AuditAction =
+  | 'CREATE_USER'
+  | 'UPDATE_USER'
+  | 'DELETE_USER'
+  | 'REGISTER_USER'
+  | 'VALIDATE_USER'
+  | 'VERIFY_USER_EMAIL'
+  | 'CREATE_GROUP_CHAT'
+  | 'ADD_USER_TO_GROUP_CHAT'
+  | 'REMOVE_USER_FROM_GROUP_CHAT'
+  | 'DELETE_GROUP_CHAT'
+  | 'CREATE_OTO_CHAT'
+  | 'DELETE_OTO_CHAT';
+
+export interface AuditLog {
+  id: number;
+  action: AuditAction;
+  userId: number;
+  timestamp: number;
+}
+
 export interface AdminStats {
   totalUsers: number;
   onlineUsers: number;
-  totalMessages: number;
-  totalGroupChats: number;
-  totalPrivateChats: number;
   totalTrustCircles: number;
 }

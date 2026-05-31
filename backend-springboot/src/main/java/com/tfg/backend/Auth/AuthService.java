@@ -1,7 +1,9 @@
 package com.tfg.backend.Auth;
 
+import com.tfg.backend.Audit.AuditService;
 import com.tfg.backend.Auth.dto.LoginDto;
 import com.tfg.backend.Auth.dto.RegisterRequestDto;
+import com.tfg.backend.Enums.AuditAction;
 import com.tfg.backend.Enums.UserRole;
 import com.tfg.backend.Notifications.NotificationService;
 import com.tfg.backend.Notifications.NotificationType;
@@ -32,6 +34,7 @@ public class AuthService {
     private final EmailService emailService;
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final NotificationService notificationService;
+    private final AuditService auditService;
 
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
@@ -39,7 +42,7 @@ public class AuthService {
     public AuthService(UserRepository userRepository, UserService userService, PasswordEncoder passwordEncoder,
                       AuthenticationManager authenticationManager, EmailService emailService,
                       EmailVerificationTokenRepository emailVerificationTokenRepository,
-                      NotificationService notificationService) {
+                      NotificationService notificationService, AuditService auditService) {
         this.userRepository = userRepository;
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
@@ -47,6 +50,7 @@ public class AuthService {
         this.emailService = emailService;
         this.emailVerificationTokenRepository = emailVerificationTokenRepository;
         this.notificationService = notificationService;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -74,7 +78,8 @@ public class AuthService {
         user.setRole(UserRole.USER);
 
         // Persistir usuario pendiente de verificacion para poder activarlo con el token
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        auditService.record(AuditAction.REGISTER_USER, savedUser.getId());
 
         // Generar token de verificación
         String verificationToken = UUID.randomUUID().toString();
@@ -116,8 +121,10 @@ public class AuthService {
         verificationToken.setUsed(true);
         emailVerificationTokenRepository.save(verificationToken);
 
+        auditService.record(AuditAction.VERIFY_USER_EMAIL, verifiedUser.getId());
+
         // Crear notificación para admins
-        createNotificationForAdmins("Nuevo usuario esperando aprobación",
+        createAdminNotification("Nuevo usuario esperando aprobación",
             "El usuario " + user.getName() + " (" + user.getEmail() + ") ha verificado su correo y espera aprobación.");
 
         return verifiedUser;
@@ -130,6 +137,7 @@ public class AuthService {
 
         user.setAdminApproved(true);
         User approvedUser = userRepository.save(user);
+        auditService.record(AuditAction.VALIDATE_USER, approvedUser.getId());
 
         // Enviar email de aprobación
         emailService.sendApprovalNotificationEmail(user.getEmail(), user.getName());
@@ -151,49 +159,47 @@ public class AuthService {
     }
 
     public User login(LoginDto loginDto) {
+        Authentication authentication;
         try {
-            // Autenticar con Spring Security
-            Authentication authentication = authenticationManager.authenticate(
+            authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                     loginDto.getEmail(),
                     loginDto.getPassword()
                 )
             );
-
-            // Obtener el usuario autenticado (solo si no está eliminado)
-            String email = authentication.getName();
-            User user = userRepository.findByEmailAndDeletedAtIsNull(email)
-                .orElseThrow(() -> new BadCredentialsException("Usuario no encontrado"));
-
-            // Verificar que el usuario verificó su email y fue aprobado
-            if (!user.isEmailVerified()) {
-                throw new BadCredentialsException("Por favor verifica tu correo electrónico");
-            }
-
-            if (!user.isAdminApproved()) {
-                throw new BadCredentialsException("Tu cuenta está pendiente de aprobación del administrador");
-            }
-
-            return userService.setOnlineStatusByEmail(email, true);
-
         } catch (BadCredentialsException e) {
+            // Credenciales realmente inválidas: mensaje genérico para no revelar si el correo existe.
             throw new BadCredentialsException("Invalid email or password");
         }
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmailAndDeletedAtIsNull(email)
+            .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
+
+        // Las credenciales ya son válidas aquí, así que estos estados de cuenta
+        // pueden comunicarse al cliente sin riesgo de enumeración.
+        if (!user.isEmailVerified()) {
+            throw new BadCredentialsException("Por favor verifica tu correo electrónico");
+        }
+
+        if (!user.isAdminApproved()) {
+            throw new BadCredentialsException("Tu cuenta está pendiente de aprobación del administrador");
+        }
+
+        return userService.setOnlineStatusByEmail(email, true);
     }
 
     public void logout(Long userId) {
         userService.setOnlineStatus(userId, false);
     }
 
-    private void createNotificationForAdmins(String title, String message) {
-        // Buscar todos los admins y crear notificación para cada uno
-        userRepository.findAllByDeletedAtIsNullAndRole(UserRole.ADMIN)
-            .forEach(admin -> notificationService.createNotification(
-                NotificationType.USER_REGISTRATION_PENDING,
-                title,
-                message,
-                admin.getId()
-            ));
+    private void createAdminNotification(String title, String message) {
+        // Bandeja compartida: una sola notificación para todos los admins (sin destinatario concreto).
+        notificationService.createNotification(
+            NotificationType.USER_REGISTRATION_PENDING,
+            title,
+            message
+        );
     }
 }
 

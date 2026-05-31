@@ -1,15 +1,12 @@
 package com.tfg.backend.OneToOneChat;
 
-import com.tfg.backend.Message.Message;
-import com.tfg.backend.Message.MessageRepository;
-import com.tfg.backend.Message.dto.SendMessageDTO;
-import com.tfg.backend.TrustCircles.TrustCirclesService;
+import com.tfg.backend.GroupChat.GroupChatRepository;
+import com.tfg.backend.SignalEnvelope.SignalEnvelopeRepository;
+import com.tfg.backend.SignalEnvelope.SignalEnvelopeService;
+import com.tfg.backend.SignalEnvelope.dto.SignalDirectMessageRequestDto;
 import com.tfg.backend.User.User;
 import com.tfg.backend.User.UserRepository;
-import java.security.Principal;
-import java.time.LocalDateTime;
-import java.util.Optional;
-import org.junit.jupiter.api.BeforeEach;
+import com.tfg.backend.User.UserService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -18,7 +15,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -27,77 +23,70 @@ import static org.mockito.Mockito.when;
 class OneToOneChatServiceWebSocketTest {
 
     @Mock
-    private MessageRepository messageRepository;
+    private UserRepository userRepository;
 
     @Mock
     private OneToOneChatRepository oneToOneChatRepository;
 
     @Mock
-    private UserRepository userRepository;
-
-    @Mock
     private SimpMessagingTemplate messagingTemplate;
 
     @Mock
-    private TrustCirclesService trustCirclesService;
+    private UserService userService;
 
-    private OneToOneChatService oneToOneChatService;
+    @Mock
+    private SignalEnvelopeRepository signalEnvelopeRepository;
 
-    @BeforeEach
-    void setUp() {
-        oneToOneChatService = new OneToOneChatService(
-            messageRepository,
-            oneToOneChatRepository,
-            userRepository,
-            messagingTemplate,
-            trustCirclesService
-        );
-    }
+    @Mock
+    private GroupChatRepository groupChatRepository;
 
     @Test
     void sendPrivateMessage_routesToReceiverEmail_notSenderEmail() {
+        SignalEnvelopeService service = new SignalEnvelopeService(
+            userRepository,
+            oneToOneChatRepository,
+            messagingTemplate,
+            userService,
+            signalEnvelopeRepository,
+            groupChatRepository
+        );
+
         User sender = buildUser(1L, "sender@example.com");
         User receiver = buildUser(2L, "receiver@example.com");
         OneToOneChat chat = new OneToOneChat(sender, receiver);
+        setField(chat, "id", 10L);
 
-        SendMessageDTO dto = new SendMessageDTO();
-        dto.setOneToOneChatId(10L);
-        dto.setContent("hola");
+        SignalDirectMessageRequestDto dto = new SignalDirectMessageRequestDto();
+        setField(dto, "recipientUserId", 2L);
+        setField(dto, "conversationId", 10L);
+        setField(dto, "cypherTextType", (short) 1);
+        setField(dto, "cypherTextB64", java.util.Base64.getEncoder().encodeToString("hola".getBytes()));
 
-        Message persisted = new Message(sender, "hola", chat);
-        persisted.setId(99L);
-        persisted.setCreatedAt(LocalDateTime.of(2026, 4, 9, 12, 0, 0));
+        when(userService.getById(2L)).thenReturn(receiver);
+        when(userService.getById(1L)).thenReturn(sender);
+        when(oneToOneChatRepository.findChatBetweenUsers(1L, 2L)).thenReturn(chat);
 
-        Principal principal = () -> "sender@example.com";
-
-        when(userRepository.findByEmailAndDeletedAtIsNull("sender@example.com"))
-            .thenReturn(Optional.of(sender));
-        when(oneToOneChatRepository.findById(10L)).thenReturn(Optional.of(chat));
-        when(userRepository.findById(2L)).thenReturn(Optional.of(receiver));
-        when(messageRepository.save(any(Message.class))).thenReturn(persisted);
-
-        oneToOneChatService.sendPrivateMessage(dto, principal);
-
-        verify(trustCirclesService).validateUsersCanCommunicate(1L, 2L);
+        service.sendPrivateMessage(1L, dto);
 
         ArgumentCaptor<String> userCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> destinationCaptor = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<SendMessageDTO> payloadCaptor = ArgumentCaptor.forClass(SendMessageDTO.class);
-
         verify(messagingTemplate).convertAndSendToUser(
             userCaptor.capture(),
             destinationCaptor.capture(),
-            payloadCaptor.capture()
+            any()
         );
-
         assertEquals("receiver@example.com", userCaptor.getValue());
-        assertEquals("/queue/messages", destinationCaptor.getValue());
+        assertEquals("/queue/signal-messages", destinationCaptor.getValue());
+    }
 
-        SendMessageDTO sentPayload = payloadCaptor.getValue();
-        assertNotNull(sentPayload);
-        assertEquals(99L, sentPayload.getId());
-        assertEquals(1L, sentPayload.getSenderId());
-        assertEquals("hola", sentPayload.getContent());
+    private void setField(Object obj, String fieldName, Object value) {
+        try {
+            java.lang.reflect.Field field = obj.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            field.set(obj, value);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private User buildUser(Long id, String email) {

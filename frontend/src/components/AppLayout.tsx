@@ -5,6 +5,7 @@ const navItems = [
   { to: '/', label: 'Dashboard' },
   { to: '/usuarios', label: 'Usuarios' },
   { to: '/circulos', label: 'Círculos de Confianza' },
+  { to: '/auditoria', label: 'Auditoría' },
   { to: '/notificaciones', label: 'Notificaciones' },
 ];
 

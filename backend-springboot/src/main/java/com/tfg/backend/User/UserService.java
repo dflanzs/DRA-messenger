@@ -1,5 +1,8 @@
 package com.tfg.backend.User;
 
+import com.tfg.backend.Audit.AuditService;
+import com.tfg.backend.Chat.dto.ChatUserDto;
+import com.tfg.backend.Enums.AuditAction;
 import com.tfg.backend.Enums.UserRole;
 import com.tfg.backend.User.dto.CreateUserDto;
 import com.tfg.backend.User.dto.UpdateUserDto;
@@ -17,10 +20,12 @@ import org.springframework.web.server.ResponseStatusException;
 public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditService auditService;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, AuditService auditService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -56,7 +61,9 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(createUserDto.getPassword()));
         user.setOnlineStatus(false);
 
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        auditService.record(AuditAction.CREATE_USER, savedUser.getId());
+        return savedUser;
     }
 
     @Transactional
@@ -88,7 +95,9 @@ public class UserService {
         }
 
         user.setId(id);
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        auditService.record(AuditAction.UPDATE_USER, id);
+        return savedUser;
     }
 
     @Transactional
@@ -102,6 +111,7 @@ public class UserService {
 
         user.setDeletedAt(LocalDateTime.now());
         userRepository.save(user);
+        auditService.record(AuditAction.DELETE_USER, id);
     }
 
     @Transactional
@@ -145,6 +155,14 @@ public class UserService {
 
         user.setRole(role);
         return userRepository.save(user);
+    }
+
+    public int countUsers() {
+        return userRepository.countByDeletedAtIsNull();
+    }
+
+    public int countActiveUsers() {
+        return userRepository.countByOnlineStatusTrue();
     }
 
     public boolean validatePassword(String password) {

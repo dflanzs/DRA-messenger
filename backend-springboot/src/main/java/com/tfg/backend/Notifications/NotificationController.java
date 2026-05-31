@@ -2,36 +2,28 @@ package com.tfg.backend.Notifications;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import com.tfg.backend.User.UserService;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/notifications")
 public class NotificationController {
     private final NotificationService notificationService;
-    private final UserService userService;
 
-    public NotificationController(NotificationService notificationService, UserService userService) {
+    public NotificationController(NotificationService notificationService) {
         this.notificationService = notificationService;
-        this.userService = userService;
     }
 
     @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @GetMapping
-    public ResponseEntity<List<Notification>> getNotifications(Authentication authentication) {
-        Long userId = userService.getByEmail(authentication.getName()).getId();
-        List<Notification> notifications = notificationService.getAdminNotifications(userId);
-        return ResponseEntity.ok(notifications);
+    public ResponseEntity<List<Notification>> getNotifications() {
+        return ResponseEntity.ok(notificationService.getAdminNotifications());
     }
 
     @PreAuthorize("@authorizationService.isAdmin(authentication)")
     @GetMapping("/unread")
-    public ResponseEntity<List<Notification>> getUnreadNotifications(Authentication authentication) {
-        Long userId = userService.getByEmail(authentication.getName()).getId();
-        List<Notification> unreadNotifications = notificationService.getUnreadAdminNotifications(userId);
-        return ResponseEntity.ok(unreadNotifications);
+    public ResponseEntity<List<Notification>> getUnreadNotifications() {
+        return ResponseEntity.ok(notificationService.getUnreadAdminNotifications());
     }
 
     @PreAuthorize("@authorizationService.isAdmin(authentication)")

@@ -49,6 +49,7 @@ public class User {
 	@Column(nullable = false)
 	private UserRole role = UserRole.USER;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
 	private boolean onlineStatus;
 
 	@Column(nullable = false, columnDefinition = "boolean default false")
@@ -58,6 +59,7 @@ public class User {
 	private boolean adminApproved = false;
 
 	@Transient
+	@JsonIgnore
 	private WebSocketSession socketSession;
 
 	@DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
