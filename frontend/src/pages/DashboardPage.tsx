@@ -5,9 +5,6 @@ import type { AdminStats } from '../types';
 const emptyStats: AdminStats = {
   totalUsers: 0,
   onlineUsers: 0,
-  totalMessages: 0,
-  totalGroupChats: 0,
-  totalPrivateChats: 0,
   totalTrustCircles: 0,
 };
 

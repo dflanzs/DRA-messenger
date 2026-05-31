@@ -82,8 +82,5 @@ export interface AuditLog {
 export interface AdminStats {
   totalUsers: number;
   onlineUsers: number;
-  totalMessages: number;
-  totalGroupChats: number;
-  totalPrivateChats: number;
   totalTrustCircles: number;
 }
