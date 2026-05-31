@@ -19,22 +19,32 @@ export interface AuditFilters {
 }
 
 export async function getStats(): Promise<AdminStats> {
-  const [users, messages, groupChats, privateChats, trustCircles] = await Promise.all([
-    getUsers(),
-    getMessages(),
-    getGroupChats(),
-    getPrivateChats(),
-    getTrustCircles(),
+  const [totalUsers, onlineUsers, totalTrustCircles] = await Promise.all([
+    getUserCount(),
+    getActiveUserCount(),
+    getTrustCircleCount(),
   ]);
 
   return {
-    totalUsers: users.length,
-    onlineUsers: users.filter((user) => user.onlineStatus).length,
-    totalMessages: messages.length,
-    totalGroupChats: groupChats.length,
-    totalPrivateChats: privateChats.length,
-    totalTrustCircles: trustCircles.length,
+    totalUsers,
+    onlineUsers,
+    totalTrustCircles,
   };
+}
+
+export async function getUserCount(): Promise<number> {
+  const { data } = await api.get<number>('/api/users/count');
+  return data;
+}
+
+export async function getActiveUserCount(): Promise<number> {
+  const { data } = await api.get<number>('/api/users/count-active');
+  return data;
+}
+
+export async function getTrustCircleCount(): Promise<number> {
+  const { data } = await api.get<number>('/api/trust-circles/count');
+  return data;
 }
 
 export async function getUsers(): Promise<User[]> {

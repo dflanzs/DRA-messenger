@@ -75,4 +75,16 @@ public class UserController {
                                                       @RequestBody UpdateUserRoleDto updateUserRoleDto) {
         return ResponseEntity.ok(UserResponseDto.fromUser(userService.updateRole(id, updateUserRoleDto.getRole())));
     }
+
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
+    @GetMapping("/count")
+    public ResponseEntity<Integer> count() {
+        return ResponseEntity.ok(userService.countUsers());
+    }
+
+    @PreAuthorize("@authorizationService.isAdmin(authentication)")
+    @GetMapping("/count-active")
+    public ResponseEntity<Integer> countActiveUsers() {
+        return ResponseEntity.ok(userService.countActiveUsers());
+    }
 }
