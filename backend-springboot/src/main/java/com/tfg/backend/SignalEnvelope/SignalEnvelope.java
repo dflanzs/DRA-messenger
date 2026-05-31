@@ -22,6 +22,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.AssertTrue;
 
@@ -29,10 +30,10 @@ import jakarta.validation.constraints.AssertTrue;
 @Table(
     name = "signal_envelopes",
     indexes = {
-        @Index(name = "idx_signal_envelopes_pending", columnList = "recipient_user_id, delivered_at, id")
+        @Index(name = "idx_signal_envelopes_pending", columnList = "recipient_user_id, id")
     }
 )
-@Check(constraints = "((conversation_type = 'DIRECT' AND one_to_one_chat_id IS NOT NULL AND group_chat_id IS NULL) OR (conversation_type = 'GROUP' AND group_chat_id IS NOT NULL AND one_to_one_chat_id IS NULL))")
+@Check(constraints = "((conversation_type = 'DIRECT' AND one_to_one_chat_id IS NOT NULL AND group_chat_id IS NULL) OR (conversation_type IN ('GROUP', 'SENDER_KEY') AND group_chat_id IS NOT NULL AND one_to_one_chat_id IS NULL))")
 public class SignalEnvelope {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -47,8 +48,11 @@ public class SignalEnvelope {
     private User receiver;
 
     public enum ConversationType {
-        DIRECT("DIRECT"), // Equivalent in Signal to One-to-One chats 
-        GROUP("GROUP");
+        DIRECT("DIRECT"), // Equivalent in Signal to One-to-One chats
+        GROUP("GROUP"),
+        // SenderKeyDistributionMessage: cifrado 1:1 pero atado al grupo. Se transporta
+        // por su propio tipo para no exigir un OneToOneChat entre miembros del grupo.
+        SENDER_KEY("SENDER_KEY");
 
         private final String value;
 
@@ -105,18 +109,18 @@ public class SignalEnvelope {
 
     @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
-
-    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    @Column(name = "delivered_at")
-    private LocalDateTime deliveredAt;
-
-    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    @Column(name = "read_at")
-    private LocalDateTime readAt;
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     public SignalEnvelope() {
         // Default constructor for JPA
+    }
+
+    // Garantiza createdAt no nulo aunque se construya via el constructor por defecto de JPA.
+    @PrePersist
+    public void prePersist() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
     }
     
     // OneToOneChats and GroupChats are different classes so we dont have to check the type, only assign it for libsignal
@@ -140,6 +144,21 @@ public class SignalEnvelope {
         this.createdAt = LocalDateTime.now();
         this.conversationType = ConversationType.DIRECT;
         this.status = MessageStatus.PENDING;
+    }
+
+    // SenderKey: mismo cifrado 1:1 que un DIRECT pero atado al grupo (sin OneToOneChat).
+    // Factory porque la firma coincide con el constructor de GROUP.
+    public static SignalEnvelope senderKey(User sender, User receiver, GroupChat groupChat, byte[] cypherText, Short cypherTextType) {
+        SignalEnvelope envelope = new SignalEnvelope();
+        envelope.sender = sender;
+        envelope.receiver = receiver;
+        envelope.groupChat = groupChat;
+        envelope.cypherText = cypherText;
+        envelope.cypherTextType = cypherTextType;
+        envelope.createdAt = LocalDateTime.now();
+        envelope.conversationType = ConversationType.SENDER_KEY;
+        envelope.status = MessageStatus.PENDING;
+        return envelope;
     }
 
     @AssertTrue(message = "Inconsistent conversation type and chat relation")
@@ -215,22 +234,6 @@ public class SignalEnvelope {
 
     public LocalDateTime getCreatedAt() {
         return this.createdAt;
-    }
-
-    public LocalDateTime getDeliveredAt() {
-        return this.deliveredAt;
-    }
-
-    public void SetDeliveredAt(LocalDateTime deliveredAt) {
-        this.deliveredAt = deliveredAt;
-    }
-
-    public LocalDateTime getReadAt() {
-        return this.readAt;
-    }
-
-    public void MarkAsRead() {
-        this.readAt = LocalDateTime.now();
     }
 
     public MessageStatus getStatus(){

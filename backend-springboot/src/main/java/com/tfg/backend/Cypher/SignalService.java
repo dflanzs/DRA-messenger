@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Base64.Decoder;
 import java.util.Set;
 
+import org.springframework.data.domain.Limit;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -266,7 +267,7 @@ public class SignalService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User keys not found");
         }
 
-        SignalOneTimePreKey oneTimePreKey = signalOneTimePreKeyRepository.getUnconsumedPreKeyByUserId(userId);
+        SignalOneTimePreKey oneTimePreKey = signalOneTimePreKeyRepository.getUnconsumedPreKeyByUserId(userId, Limit.of(1));
         if (oneTimePreKey != null) {
             oneTimePreKey.SetConsumedAt(LocalDateTime.now());
             signalOneTimePreKeyRepository.save(oneTimePreKey);

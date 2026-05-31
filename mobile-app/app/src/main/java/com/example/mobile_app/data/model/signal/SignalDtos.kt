@@ -40,9 +40,6 @@ data class SignalBundleResponseDto(
 )
 
 data class SignalRefillRequestDto(
-    val kyberPreKeyId: Int,
-    val kyberPreKeyPublicB64: String,
-    val kyberPreKeySignatureB64: String,
     val oneTimePreKeys: List<SignalOneTimePreKeyDto>,
 )
 

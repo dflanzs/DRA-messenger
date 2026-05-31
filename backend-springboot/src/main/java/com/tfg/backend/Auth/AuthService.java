@@ -198,8 +198,7 @@ public class AuthService {
         notificationService.createNotification(
             NotificationType.USER_REGISTRATION_PENDING,
             title,
-            message,
-            null
+            message
         );
     }
 }

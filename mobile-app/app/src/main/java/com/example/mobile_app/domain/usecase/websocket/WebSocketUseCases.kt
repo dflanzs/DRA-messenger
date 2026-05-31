@@ -38,6 +38,13 @@ class WebSocketUseCases(
     suspend fun sendGroupMessage(messageJson: String): Boolean {
         return webSocketRepository.sendGroupMessage(messageJson)
     }
+
+    /**
+     * Enviar la sender key de grupo (SKDM) a un miembro.
+     */
+    suspend fun sendGroupSenderKey(messageJson: String): Boolean {
+        return webSocketRepository.sendGroupSenderKey(messageJson)
+    }
     
     /**
      * Desconectar

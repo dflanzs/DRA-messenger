@@ -15,8 +15,8 @@ public class NotificationService {
     }
 
     @Transactional
-    public Notification createNotification(NotificationType type, String title, String message, Long userId) {
-        Notification notification = new Notification(type, title, message, userId);
+    public Notification createNotification(NotificationType type, String title, String message) {
+        Notification notification = new Notification(type, title, message);
         return notificationRepository.save(notification);
     }
 
