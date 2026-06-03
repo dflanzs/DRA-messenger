@@ -26,7 +26,6 @@ import org.signal.libsignal.protocol.message.SignalMessage
 import org.signal.libsignal.protocol.state.IdentityKeyStore
 import org.signal.libsignal.protocol.state.PreKeyBundle
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 
 /** Tipo y bytes del ciphertext, listos para el wire (cypherTextType / cypherTextB64). */
 data class EncryptedPayload(val type: Short, val bytes: ByteArray) {
@@ -110,10 +109,6 @@ class SignalCipherService(
 
     private fun ownAddress() = SignalProtocolAddress(ownUserId().toString(), 1)
 
-    // Mensajes de grupo recibidos antes de tener la sender key del emisor (cola en memoria).
-    private val pendingGroup = ConcurrentHashMap<String, MutableList<EncryptedPayload>>()
-    private fun pendKey(groupId: Long, senderUserId: Long) = "$groupId:$senderUserId"
-
     /**
      * Garantiza que nuestra sender key del grupo se ha distribuido a [members].
      * Devuelve las SKDM 1:1 que el llamante debe enviar (vacío si ya estaban distribuidas).
@@ -151,24 +146,19 @@ class SignalCipherService(
             GroupMessageOut(EncryptedPayload(msg.type.toShort(), msg.serialize()))
         }
 
-    /** Descifra un mensaje de grupo de [senderUserId]. Si falta la sender key, encola y devuelve vacío. */
+    /**
+     * Descifra un mensaje de grupo de [senderUserId]. Si aún no tenemos su sender key
+     * (NoSessionException) devuelve vacío; el llamante no hace ACK y el backend lo
+     * reentrega en el próximo arranque, cuando la SKDM ya esté registrada en Room.
+     */
     suspend fun decryptGroup(groupId: Long, senderUserId: Long, payload: EncryptedPayload): ByteArray =
         withContext(Dispatchers.IO) {
             val sender = SignalProtocolAddress(senderUserId.toString(), 1)
             try {
                 GroupCipher(store.senderKeys, sender).decrypt(payload.bytes)
             } catch (e: NoSessionException) {
-                pendingGroup.getOrPut(pendKey(groupId, senderUserId)) { mutableListOf() }.add(payload)
                 ByteArray(0)
             }
-        }
-
-    /** Reintenta los mensajes de grupo encolados de [senderUserId] tras recibir su SKDM. */
-    suspend fun drainPendingGroup(groupId: Long, senderUserId: Long): List<ByteArray> =
-        withContext(Dispatchers.IO) {
-            val queued = pendingGroup.remove(pendKey(groupId, senderUserId)) ?: return@withContext emptyList()
-            val cipher = GroupCipher(store.senderKeys, SignalProtocolAddress(senderUserId.toString(), 1))
-            queued.mapNotNull { runCatching { cipher.decrypt(it.bytes) }.getOrNull() }
         }
 
     /** Rota nuestra sender key del grupo (al salir/expulsar un miembro): se redistribuye en el próximo envío. */
