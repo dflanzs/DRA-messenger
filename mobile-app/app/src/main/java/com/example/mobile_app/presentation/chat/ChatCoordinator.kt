@@ -24,6 +24,7 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
@@ -48,6 +49,52 @@ class ChatCoordinator(
     private val processedEnvelopes = java.util.Collections.synchronizedSet(mutableSetOf<Long>())
 
     private fun claimEnvelope(envelopeId: Long): Boolean = processedEnvelopes.add(envelopeId)
+
+    // Cola FIFO de un solo consumidor. El callback STOMP entrega los mensajes en orden
+    // (SKDM antes que los GROUP que desbloquea); procesarlos secuencialmente preserva ese
+    // orden. Antes cada mensaje lanzaba su propia corrutina en paralelo, así que un mensaje
+    // de grupo podía adelantar a la sender key del emisor, fallar con NoSessionException y
+    // quedar sin entregar -> invisible en grupos de 3+. Tanto el push en vivo como el
+    // drenado de pendientes encolan aquí para compartir un único orden de procesamiento.
+    private data class IncomingWsMessage(
+        val envelopeId: Long,
+        val conversationType: String,
+        val conversationId: Long,
+        val senderUserId: Long,
+        val cypherTextType: Short,
+        val cypherTextB64: String,
+        val createdAt: String,
+    )
+
+    private val incomingChannel = Channel<IncomingWsMessage>(Channel.UNLIMITED)
+
+    init {
+        // Único consumidor secuencial; vive lo que vive coordinatorScope (vida de app).
+        coordinatorScope.launch {
+            for (msg in incomingChannel) {
+                processIncoming(msg)
+            }
+        }
+    }
+
+    private suspend fun processIncoming(msg: IncomingWsMessage) {
+        val saved = runCatching {
+            repository.saveIncomingWebSocketMessage(
+                msg.conversationType, msg.conversationId, msg.senderUserId,
+                msg.cypherTextType, msg.cypherTextB64, msg.createdAt,
+            )
+        }.onFailure { Log.w("ChatCoordinator", "No se pudo guardar mensaje entrante ${msg.envelopeId}: ${it.message}") }
+            .isSuccess
+        if (saved) {
+            repository.ackMessageDelivered(msg.envelopeId)
+            // Un mensaje PreKey entrante puede haber consumido una one-time prekey local.
+            runCatching { signalEngine.refillIfNeeded() }
+        } else {
+            // No se pudo descifrar/guardar (p. ej. GROUP cuya sender key aún no llegó):
+            // se libera el claim para que un drenado de pendientes posterior lo reintente.
+            processedEnvelopes.remove(msg.envelopeId)
+        }
+    }
 
     suspend fun refreshChats() {
         repository.refreshFromServer()
@@ -90,19 +137,12 @@ class ChatCoordinator(
             Log.d("ChatCoordinator", "envelope $envelopeId ya procesado, ignorando push")
             return
         }
-        coordinatorScope.launch {
-            val saved = runCatching {
-                repository.saveIncomingWebSocketMessage(
-                    conversationType, conversationId, senderUserId, cypherTextType, cypherTextB64, createdAt,
-                )
-            }.onFailure { Log.w("ChatCoordinator", "No se pudo guardar mensaje entrante: ${it.message}") }
-                .isSuccess
-            if (saved) {
-                repository.ackMessageDelivered(envelopeId)
-                // Un mensaje PreKey entrante puede haber consumido una one-time prekey local.
-                runCatching { signalEngine.refillIfNeeded() }
-            }
-        }
+        // Encola; el consumidor único lo procesa en orden de llegada (SKDM antes que GROUP).
+        incomingChannel.trySend(
+            IncomingWsMessage(
+                envelopeId, conversationType, conversationId, senderUserId, cypherTextType, cypherTextB64, createdAt,
+            ),
+        )
     }
 
     suspend fun consumePendingMessages() {
@@ -110,26 +150,27 @@ class ChatCoordinator(
             .onFailure { Log.w("ChatCoordinator", "fetch pending falló: ${it.message}") }
             .getOrNull().orEmpty()
         Log.d("ChatCoordinator", "pendientes recibidos: ${pending.size}")
+        // Encola en el mismo consumidor único que el push en vivo: así pendientes y push
+        // comparten un solo orden de procesamiento y no compiten entre sí (la SKDM se
+        // procesa antes que el mensaje de grupo que desbloquea). El refill de prekeys lo
+        // hace processIncoming por mensaje.
         for (msg in pending) {
             if (!claimEnvelope(msg.envelopeId)) {
                 Log.d("ChatCoordinator", "envelope ${msg.envelopeId} ya procesado, ignorando pendiente")
                 continue
             }
-            val saved = runCatching {
-                repository.saveIncomingWebSocketMessage(
+            incomingChannel.trySend(
+                IncomingWsMessage(
+                    envelopeId = msg.envelopeId,
                     conversationType = msg.conversationType,
                     conversationId = msg.conversationId,
                     senderUserId = msg.senderUserId,
                     cypherTextType = msg.cypherTextType,
                     cypherTextB64 = msg.cypherTextB64,
                     createdAt = msg.createdAt?.toString() ?: java.time.LocalDateTime.now().toString(),
-                )
-            }.onFailure { Log.w("ChatCoordinator", "guardar pendiente ${msg.envelopeId} falló: ${it.message}") }
-                .isSuccess
-            if (saved) repository.ackMessageDelivered(msg.envelopeId)
+                ),
+            )
         }
-        // Tras drenar pendientes (posibles sesiones nuevas), repón one-time prekeys si quedan pocas.
-        runCatching { signalEngine.refillIfNeeded() }
     }
 
     suspend fun saveOutgoingMessage(
